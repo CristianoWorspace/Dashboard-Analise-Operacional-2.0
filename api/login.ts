@@ -9,17 +9,7 @@ type AppUser = {
   role: string;
 };
 
-const MASTER_USER: AppUser = {
-  name: "Cristiano Rafael Kuhn",
-  username: "cristiano.kuhn",
-  password: "9784Pqa@",
-  email: "cristianokuhn7@gmail.com",
-  role: "Admin"
-};
-
-const SHEET_URL =
-  process.env.GOOGLE_APPS_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbyt9oKLdVTEoBlFW9NThj7usEkYYzRbDJZOY_DY9cnnrxT-L-ZrWJj8UuSuBf4BgTBKdQ/exec";
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
 
 function normalizeUser(raw: any): AppUser | null {
   if (!raw || typeof raw !== "object") return null;
@@ -35,7 +25,7 @@ function normalizeUser(raw: any): AppUser | null {
 }
 
 async function getUsersFromSheet(): Promise<AppUser[]> {
-  const response = await fetch(`${SHEET_URL}?action=getUsers`, { cache: "no-store" });
+  const response = await fetch(`${APPS_SCRIPT_URL}?action=getUsers`, { cache: "no-store" });
   const text = await response.text();
 
   let result: any;
@@ -52,7 +42,7 @@ async function getUsersFromSheet(): Promise<AppUser[]> {
     throw new Error("O Apps Script respondeu dados da agenda, mas não usuários. Atualize o Apps Script para tratar action=getUsers.");
   }
 
-  return users.length > 0 ? users : [MASTER_USER];
+  return users;
 }
 
 export default async function handler(req: any, res: any) {
@@ -87,23 +77,11 @@ export default async function handler(req: any, res: any) {
   } catch (e: any) {
     console.error("[api/login]", e);
 
-    // Fallback de emergência apenas para o administrador master, para não bloquear a manutenção do sistema.
-    if (username === MASTER_USER.username && password === MASTER_USER.password) {
-      return res.status(200).json({
-        success: true,
-        warning: e?.message,
-        user: {
-          name: MASTER_USER.name,
-          username: MASTER_USER.username,
-          email: MASTER_USER.email,
-          role: MASTER_USER.role
-        }
-      });
-    }
+
 
     return res.status(500).json({
       success: false,
-      message: e?.message || "Erro ao conectar com o banco de dados de usuários.",
+      message: e?.message || "Erro ao conectar com o banco de dados de usuários. Verifique o Apps Script.",
       error: String(e)
     });
   }
