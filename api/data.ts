@@ -1,13 +1,11 @@
 // api/data.ts — Vercel Serverless
 // Substitua o arquivo atual por este para deixar a URL do Apps Script configurável e a ação explícita.
 
-const SHEET_URL =
-  process.env.GOOGLE_APPS_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbyt9oKLdVTEoBlFW9NThj7usEkYYzRbDJZOY_DY9cnnrxT-L-ZrWJj8UuSuBf4BgTBKdQ/exec";
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
 
 export default async function handler(req: any, res: any) {
   try {
-    const response = await fetch(`${SHEET_URL}?action=getData`, { cache: "no-store" });
+    const response = await fetch(`${APPS_SCRIPT_URL}?action=getData`, { cache: "no-store" });
     const text = await response.text();
 
     let parsed: any;
