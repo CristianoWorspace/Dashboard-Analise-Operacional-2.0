@@ -29,7 +29,7 @@ export function isStatusNotPerformed(status: string | undefined | null): boolean
   if (!status) return false;
   const s = status.toLowerCase();
   const norm = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  return norm.includes("não realizado");
+  return norm.includes("nao realizado") || norm.includes("não realizado");
 }
 
 /**
@@ -68,8 +68,8 @@ export function parseSheetRow(row: any, index: number): RawDemand {
   let protocolVal = "";
   let statusVal = "";
   let reasonVal = "";
-  let nivelVal: "com_deslocamento" | "sem_deslocamento" | "" = ""; // Nova coluna
-  let gruposVal = ""; // Nova coluna
+  let nivelVal: "com_deslocamento" | "sem_deslocamento" | "" = "";
+  let gruposVal = "";
   let demandVal = ""; // TipoOS
   let technicianVal = ""; // name
   let cityVal = "";
@@ -81,7 +81,7 @@ export function parseSheetRow(row: any, index: number): RawDemand {
     // B (1) -> status
     // C (2) -> reason
     // D (3) -> nivel (com_deslocamento / sem_deslocamento)
-    // E (4) -> grupos (Ativação, Suporte, etc.)
+    // E (4) -> grupos
     // F (5) -> TipoOS
     // G (6) -> name (Technician Name)
     // H (7) -> city
@@ -89,7 +89,10 @@ export function parseSheetRow(row: any, index: number): RawDemand {
     protocolVal = String(row[0] || "").trim();
     statusVal = String(row[1] || "").trim();
     reasonVal = String(row[2] || "").trim();
-    nivelVal = (String(row[3] || "").trim() as "com_deslocamento" | "sem_deslocamento" | "");
+    
+    const rawNivel = String(row[3] || "").trim().toLowerCase();
+    nivelVal = rawNivel.includes("com") ? "com_deslocamento" : rawNivel.includes("sem") ? "sem_deslocamento" : "";
+    
     gruposVal = String(row[4] || "").trim();
     demandVal = String(row[5] || "").trim();
     technicianVal = String(row[6] || "").trim();
@@ -115,7 +118,10 @@ export function parseSheetRow(row: any, index: number): RawDemand {
     protocolVal = getVal(1, ["protocol_number", "protocolo", "id_protocolo"], "protocol_number");
     statusVal = getVal(2, ["status"], "status");
     reasonVal = getVal(3, ["reason", "motivo", "justificativa"], "reason");
-    nivelVal = (getVal(4, ["nivel", "level"], "nivel") as "com_deslocamento" | "sem_deslocamento" | "");
+    
+    const rawNivel = getVal(4, ["nivel", "level", "deslocamento"], "nivel").toLowerCase();
+    nivelVal = rawNivel.includes("com") ? "com_deslocamento" : rawNivel.includes("sem") ? "sem_deslocamento" : "";
+    
     gruposVal = getVal(5, ["grupos", "groups"], "grupos");
     demandVal = getVal(6, ["tipoos", "tipo_os", "demanda", "servico"], "TipoOS");
     technicianVal = getVal(7, ["name", "nome", "tecnico"], "name");
@@ -127,7 +133,6 @@ export function parseSheetRow(row: any, index: number): RawDemand {
   const dateObj = parseDate(scheduleDateVal);
   let dateFormatted = scheduleDateVal;
   if (dateObj) {
-    // If scheduleDateVal has "T" or is an ISO string, we extract UTC parameters to prevent client-side localized timezone shift (e.g. subtracting 1 day)
     const isIso = scheduleDateVal.includes("T") || (scheduleDateVal.includes("-") && scheduleDateVal.length >= 10);
     const day = String(isIso ? dateObj.getUTCDate() : dateObj.getDate()).padStart(2, "0");
     const month = String(isIso ? (dateObj.getUTCMonth() + 1) : (dateObj.getMonth() + 1)).padStart(2, "0");
@@ -135,9 +140,7 @@ export function parseSheetRow(row: any, index: number): RawDemand {
     dateFormatted = `${day}/${month}/${year}`;
   }
 
-  // Define client as representation of protocol and city
   const clientVal = protocolVal ? `Protocolo: #${protocolVal}` : `OS #${index + 1}`;
-
   const category = classifyDemand(demandVal);
 
   return {
@@ -161,17 +164,14 @@ export function parseSheetRow(row: any, index: number): RawDemand {
  */
 export function parseDate(dateString: string): Date | null {
   if (!dateString) return null;
-  // Try parsing as ISO string first
   const date = new Date(dateString);
   if (!isNaN(date.getTime())) return date;
 
-  // Try parsing as dd/mm/yyyy
   const parts = dateString.split("/");
   if (parts.length === 3) {
     const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
     if (!isNaN(d.getTime())) return d;
   }
-
   return null;
 }
 
@@ -186,12 +186,9 @@ export function groupDemandsByProtocol(demands: RawDemand[]): RawDemand[] {
       if (!grouped[demand.protocol_number]) {
         grouped[demand.protocol_number] = { ...demand, technicians: [demand.technician], isGroupedProtocol: true };
       } else {
-        // Add technician to existing group if not already present
         if (demand.technician && !grouped[demand.protocol_number].technicians?.includes(demand.technician)) {
           grouped[demand.protocol_number].technicians?.push(demand.technician);
         }
-        // Update status to the most "negative" one (e.g., if one is "Reagendado", the group is "Reagendado")
-        // This logic might need refinement based on exact business rules
         if (isStatusRescheduled(demand.status) && !isStatusRescheduled(grouped[demand.protocol_number].status)) {
           grouped[demand.protocol_number].status = demand.status;
         } else if (isStatusNotPerformed(demand.status) && !isStatusRescheduled(grouped[demand.protocol_number].status) && !isStatusNotPerformed(grouped[demand.protocol_number].status)) {
@@ -199,7 +196,6 @@ export function groupDemandsByProtocol(demands: RawDemand[]): RawDemand[] {
         }
       }
     } else {
-      // If no protocol number, treat as individual demand
       grouped[`no_protocol_${demands.indexOf(demand)}`] = demand;
     }
   });
@@ -213,15 +209,12 @@ export function groupDemandsByProtocol(demands: RawDemand[]): RawDemand[] {
 export function calculateGeneralMetrics(demands: RawDemand[]): GeneralMetrics {
   const totalDemands = demands.length;
   const totalCompleted = demands.filter(d => isStatusCompleted(d.status)).length;
-  
-  // Eficiência do agendamento = % de concluídas em relação ao total
   const schedulingEfficiency = totalDemands > 0 ? (totalCompleted / totalDemands) * 100 : 0;
 
   let completedSuporte = 0;
   let completedAtivacoes = 0;
   let completedInfraestrutura = 0;
   let completedRecolhimentos = 0;
-
   let totalSuporte = 0;
   let totalAtivacoes = 0;
   let totalInfraestrutura = 0;
@@ -229,7 +222,6 @@ export function calculateGeneralMetrics(demands: RawDemand[]): GeneralMetrics {
 
   demands.forEach(d => {
     const isCompleted = isStatusCompleted(d.status);
-    
     switch (d.category) {
       case "Suporte":
         totalSuporte++;
@@ -251,17 +243,9 @@ export function calculateGeneralMetrics(demands: RawDemand[]): GeneralMetrics {
   });
 
   return {
-    totalDemands,
-    totalCompleted,
-    schedulingEfficiency,
-    completedSuporte,
-    completedAtivacoes,
-    completedInfraestrutura,
-    completedRecolhimentos,
-    totalSuporte,
-    totalAtivacoes,
-    totalInfraestrutura,
-    totalRecolhimentos
+    totalDemands, totalCompleted, schedulingEfficiency,
+    completedSuporte, completedAtivacoes, completedInfraestrutura, completedRecolhimentos,
+    totalSuporte, totalAtivacoes, totalInfraestrutura, totalRecolhimentos
   };
 }
 
@@ -269,98 +253,60 @@ export function calculateGeneralMetrics(demands: RawDemand[]): GeneralMetrics {
  * Calculates specialized metrics for Retrievals Dashboard (Recolhimentos)
  */
 export function calculateRecolhimentoMetrics(demands: RawDemand[]): RecolhimentoMetrics {
-  // Only filter out items that belong to the "Recolhimentos" category
   const recolhimentos = demands.filter(d => d.category === "Recolhimentos");
   const totalAttempts = recolhimentos.length;
-
-  // Real effective retrievals: status is "concluido" or "concluída"
   const effectiveRetrievals = recolhimentos.filter(d => isStatusCompleted(d.status)).length;
 
-  // Sent to billing: status is "não realizado" / "não realizada" AND reason contain "cobrança"
   const sentToBilling = recolhimentos.filter(d => {
     const statusLower = d.status.toLowerCase();
     const reasonLower = d.reason.toLowerCase();
-    return (isStatusNotPerformed(d.status) || statusLower.includes("enviado a cobrança")) && reasonLower.includes("cobrança");
+    return (isStatusNotPerformed(d.status) || statusLower.includes("cobrança")) && reasonLower.includes("cobrança");
   }).length;
 
-  // Team did not go: status "reagendado" AND reason contains "não foi"
-  const teamDidNotGo = recolhimentos.filter(d => {
-    return isStatusRescheduled(d.status) && d.reason.toLowerCase().includes("não foi");
-  }).length;
-
-  // Client absent/not found: status "reagendado" AND reason contains "cliente não estava"
-  const clientAusente = recolhimentos.filter(d => {
-    return isStatusRescheduled(d.status) && d.reason.toLowerCase().includes("cliente não estava");
-  }).length;
-
-  // Customer refused to return or did not allow entry: status "reagendado" AND reason contains "recusou"
-  const clientRefused = recolhimentos.filter(d => {
-    return isStatusRescheduled(d.status) && d.reason.toLowerCase().includes("recusou");
-  }).length;
+  const teamDidNotGo = recolhimentos.filter(d => isStatusRescheduled(d.status) && d.reason.toLowerCase().includes("não foi")).length;
+  const clientAusente = recolhimentos.filter(d => isStatusRescheduled(d.status) && d.reason.toLowerCase().includes("não estava")).length;
+  const clientRefused = recolhimentos.filter(d => isStatusRescheduled(d.status) && d.reason.toLowerCase().includes("recusou")).length;
 
   const retrievalEffectiveness = totalAttempts > 0 ? (effectiveRetrievals / totalAttempts) * 100 : 0;
 
   return {
-    totalAttempts,
-    effectiveRetrievals,
-    sentToBilling,
-    teamDidNotGo,
-    clientAusente,
-    clientRefused,
-    retrievalEffectiveness,
+    totalAttempts, effectiveRetrievals, sentToBilling, teamDidNotGo, clientAusente, clientRefused, retrievalEffectiveness
   };
 }
 
 /**
- * Calculates operational efficiency metrics.
- * Eficiência Operacional: Operacional é a relação de demandas concluídas de acordo com o total de demandas a serem realizadas.
- * Considera apenas demandas com deslocamento.
+ * Eficiência Operacional: concluídas com deslocamento / total com deslocamento.
  */
 export function calculateOperationalEfficiencyMetrics(demands: RawDemand[]): OperationalEfficiencyMetrics {
-  const demandsWithDisplacement = demands.filter(d => d.nivel === "com_deslocamento");
-  const totalDemandsWithDisplacement = demandsWithDisplacement.length;
-  const completedDemandsWithDisplacement = demandsWithDisplacement.filter(d => isStatusCompleted(d.status)).length;
-
-  const operationalEfficiency = totalDemandsWithDisplacement > 0
-    ? (completedDemandsWithDisplacement / totalDemandsWithDisplacement) * 100
-    : 0;
+  const displacementDemands = demands.filter(d => d.nivel === "com_deslocamento");
+  const total = displacementDemands.length;
+  const completed = displacementDemands.filter(d => isStatusCompleted(d.status)).length;
+  const efficiency = total > 0 ? (completed / total) * 100 : 0;
 
   return {
-    totalDemandsWithDisplacement,
-    completedDemandsWithDisplacement,
-    operationalEfficiency,
+    totalDemandsWithDisplacement: total,
+    completedDemandsWithDisplacement: completed,
+    operationalEfficiency: efficiency
   };
 }
 
 /**
- * Calculates scheduling adherence metrics.
- * Aderência do Agendamento: eficiência do agendamento considerando descumprimento de planejado 'por parte do cliente',
- * levando em conta o nível de acertos da equipe "agendamento" propriamente.
- * Exclui serviços como Recolhimento, Cancelamento e Entrega de Carnê.
+ * Aderência do Agendamento: exclui tipos específicos.
  */
 export function calculateSchedulingAdherenceMetrics(demands: RawDemand[]): SchedulingAdherenceMetrics {
-  const excludedDemandTypes = [
-    "Recolhimento",
-    "Cancelamento / Financeiro",
-    "Cancelamento / Retenção",
-    "Entrega de Carnê", // Assumindo que este é um valor possível para 'demand'
-  ].map(s => s.toLowerCase());
-
-  const eligibleDemands = demands.filter(d =>
-    d.nivel === "com_deslocamento" &&
-    !excludedDemandTypes.includes(d.demand.toLowerCase())
+  const excludedTypes = ["recolhimento", "cancelamento", "entrega de carne"];
+  const eligible = demands.filter(d => 
+    d.nivel === "com_deslocamento" && 
+    !excludedTypes.some(type => d.demand.toLowerCase().includes(type))
   );
 
-  const totalDemandsForAdherence = eligibleDemands.length;
-  const adherentDemands = eligibleDemands.filter(d => isStatusCompleted(d.status)).length;
-
-  const schedulingAdherence = totalDemandsForAdherence > 0
-    ? (adherentDemands / totalDemandsForAdherence) * 100
-    : 0;
+  const total = eligible.length;
+  const adherent = eligible.filter(d => isStatusCompleted(d.status)).length;
+  const adherence = total > 0 ? (adherent / total) * 100 : 0;
 
   return {
-    totalDemandsForAdherence,
-    adherentDemands,
-    schedulingAdherence,
+    totalDemandsForAdherence: total,
+    adherentDemands: adherent,
+    schedulingAdherence: adherence
   };
 }
