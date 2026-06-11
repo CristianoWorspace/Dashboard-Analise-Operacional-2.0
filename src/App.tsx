@@ -54,12 +54,27 @@ import {
   LineChart,
   Line
 } from "recharts";
-import { parseSheetRow, calculateGeneralMetrics, calculateRecolhimentoMetrics, parseDate, groupDemandsByProtocol, isStatusCompleted } from "./utils";
-import { RawDemand, DashboardFilters, User } from "./types";
+import { 
+  parseSheetRow, 
+  calculateGeneralMetrics, 
+  calculateRecolhimentoMetrics, 
+  calculateOperationalEfficiencyMetrics,
+  calculateSchedulingAdherenceMetrics,
+  parseDate, 
+  groupDemandsByProtocol, 
+  isStatusCompleted 
+} from "./utils";
+import { 
+  RawDemand, 
+  DashboardFilters, 
+  User,
+  OperationalEfficiencyMetrics,
+  SchedulingAdherenceMetrics
+} from "./types";
 
 export default function App() {
   // User authentication states
-  const [activeTab, setActiveTab] = useState<"geral" | "recolhimentos" | "motivos" | "usuarios">("geral");
+  const [activeTab, setActiveTab] = useState<"geral" | "recolhimentos" | "eficiencia" | "motivos" | "usuarios">("geral");
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem("dashboard_user");
     if (saved) {
@@ -482,7 +497,7 @@ const handleLogin = async (e: React.FormEvent) => {
         }
       }
 
-      // 4. Technician Filter (checks if technician was part of the protocol team)
+      // 4. Technician Filter (checks if technician was part of the protocol or assignment)
       if (filters.technician !== "all") {
         if (item.technicians) {
           if (!item.technicians.includes(filters.technician)) return false;
@@ -519,6 +534,15 @@ const handleLogin = async (e: React.FormEvent) => {
 
   const recolhimentoMetrics = useMemo(() => {
     return calculateRecolhimentoMetrics(filteredDemands);
+  }, [filteredDemands]);
+
+  // NOVAS MÉTRICAS DE EFICIÊNCIA OPERACIONAL E ADERÊNCIA
+  const operationalEfficiencyMetrics = useMemo(() => {
+    return calculateOperationalEfficiencyMetrics(filteredDemands);
+  }, [filteredDemands]);
+
+  const schedulingAdherenceMetrics = useMemo(() => {
+    return calculateSchedulingAdherenceMetrics(filteredDemands);
   }, [filteredDemands]);
 
   // Temporal and distribution chart datasets
@@ -769,6 +793,19 @@ const handleLogin = async (e: React.FormEvent) => {
           </button>
 
           <button
+            onClick={() => { setActiveTab("eficiencia"); }}
+            className={`p-3 rounded-xl transition duration-200 cursor-pointer flex flex-col items-center gap-1 group ${
+              activeTab === "eficiencia"
+                ? "text-indigo-400 bg-white/10 ring-1 ring-white/10"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
+            }`}
+            title="Eficiência Operacional"
+          >
+            <TrendingUp className="w-5 h-5" />
+            <span className="text-[9px] font-mono hidden md:block">Eficiência</span>
+          </button>
+
+          <button
             onClick={() => { setActiveTab("recolhimentos"); setFilters(p => ({ ...p, category: "Recolhimentos" })); }}
             className={`p-3 rounded-xl transition duration-200 cursor-pointer flex flex-col items-center gap-1 group ${
               activeTab === "recolhimentos"
@@ -871,7 +908,7 @@ const handleLogin = async (e: React.FormEvent) => {
             </button>
 
             <a
-              href="https://script.google.com/macros/s/AKfycbyt9oKLdVTEoBlFW9NThj7usEkYYzRbDJZOY_DY9cnnrxT-L-ZrWJj8UuSuBf4BgTBKdQ/exec"
+              href="https://script.google.com/macros/s/AKfycbxVKg9Ga7CSv8KwGVV0GAPzpa1G9vy_DqMtxmljVwj8spgIPLxtClSVkU02bUvJCBPFFg/exec"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-100 text-slate-600 hover:text-slate-900 text-xs transition duration-200 hover:bg-slate-100 cursor-pointer"
@@ -1064,445 +1101,401 @@ const handleLogin = async (e: React.FormEvent) => {
 
         {/* INTELIGENCIA ANALÍTICA BANNER - RESOLVES DEDUPLICATION & METRIC DISCREPANCIES */}
         {!loading && activeTab !== "usuarios" && (
-          <div className="bg-white border-2 border-indigo-100/70 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm mb-6 animate-fade-in">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-indigo-50 border border-indigo-100 rounded-xl text-indigo-600 shrink-0">
-                <LayoutGrid className="w-5 h-5" />
+          <div className="bg-white border-2 border-indigo-100/70 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md">
+                <Shield className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-800 flex items-center flex-wrap gap-2">
-                  <span>Filtro de Inteligência de Auditoria Sênior</span>
-                  <span className="bg-green-50 text-green-700 text-3xs px-2.5 py-0.5 font-bold rounded-full font-mono border border-green-200">
-                    DEDUPLICAÇÃO ATIVA (RECOMENDADO)
-                  </span>
-                </h4>
-                <p className="text-[11px] text-slate-500 mt-1 max-w-2xl leading-normal">
-                  Uma única Ordem de Serviço física (definida pelo <b>número de protocolo</b>) pode ter 2 ou mais técnicos atuando juntos em co-autoria. A planilha exportada da agenda possui múltiplos registros síncronos para o mesmo protocolo correspondendo a cada técnico. Ative a visão de <b>Protocolos Únicos</b> para consolidar os dados operacionais e medir a eficiência de forma real (sem distorções de equipe).
-                </p>
+                <h4 className="text-xs font-bold text-slate-900 uppercase tracking-tight">Cálculo de Efetividade Unificada</h4>
+                <p className="text-[10px] text-slate-500 font-medium">Os indicadores consideram {groupedProtocols.length} protocolos únicos para evitar duplicidade técnica.</p>
               </div>
             </div>
-
-            {/* Selector Toggle */}
-            <div className="flex items-center bg-slate-100 p-1.5 rounded-xl shrink-0 self-stretch md:self-auto border border-slate-200">
-              <button
-                id="btn-modo-protocolo"
-                onClick={() => setCalculationMode("protocol")}
-                className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer ${
-                  calculationMode === "protocol"
-                    ? "bg-white text-indigo-700 shadow-xs border border-indigo-100"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                🎯 Protocolos Únicos
-              </button>
-              <button
-                id="btn-modo-bruto"
-                onClick={() => setCalculationMode("assignment")}
-                className={`flex-1 md:flex-none px-4 py-2 rounded-lg text-xs font-semibold transition duration-150 cursor-pointer ${
-                  calculationMode === "assignment"
-                    ? "bg-white text-slate-900 shadow-xs border border-slate-200"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
-              >
-                📋 Agenda Bruta (Linhas)
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* LOADING ANIMATION */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-24 bg-white border border-slate-200 rounded-2xl shadow-sm mb-6">
-            <RefreshCw className="w-10 h-10 text-indigo-600 animate-spin mb-4" />
-            <span className="text-sm font-bold text-slate-900 font-display">Calculando Agregados Operacionais</span>
-            <span className="text-xs text-slate-400 mt-1">Isso pode levar alguns segundos...</span>
-          </div>
-        )}
-
-        {/* BENTO GRID SPACE: VIEW 1 - PANORAMA GERAL DO NEGÓCIO */}
-        {!loading && activeTab === "geral" && (
-          <div className="grid grid-cols-12 gap-6">
             
-            {/* CARD 1: GLOBAL SCHEDULING EFFICIENCY (BENTO COL-4) */}
-            <div className="col-span-12 md:col-span-4 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between h-[180px] hover:border-indigo-400 transition duration-150 group">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Eficiência Global</span>
-                  <p className="text-3xs text-slate-400 font-mono mt-0.5">Visitas Concluídas / Escopo Planejado</p>
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+              <button 
+                onClick={() => setCalculationMode("protocol")}
+                className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all duration-200 cursor-pointer ${calculationMode === "protocol" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                Efetividade Protocolo
+              </button>
+              <button 
+                onClick={() => setCalculationMode("assignment")}
+                className={`px-3 py-1.5 text-[10px] font-bold rounded-lg transition-all duration-200 cursor-pointer ${calculationMode === "assignment" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                Atividades da Agenda
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* BENTO GRID: VIEW 1 - PANORAMA GERAL */}
+        {!loading && activeTab === "geral" && (
+          <div className="space-y-6">
+            
+            {/* KPI Cards Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Card: Total Demands */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">Volume Total</span>
+                  <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-100"><FileSpreadsheet className="w-4 h-4 text-slate-400" /></div>
                 </div>
-                <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-100 transition">
-                  <Percent className="w-5 h-5" />
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-slate-900 tracking-tight">{generalMetrics.totalDemands}</span>
+                  <span className="text-2xs font-bold text-slate-400 uppercase">OS</span>
                 </div>
+                <p className="text-[10px] text-slate-500 mt-2 font-medium">Total de agendamentos no período selecionado.</p>
               </div>
+
+              {/* Card: Efficiency */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between ring-1 ring-indigo-500/10">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest font-mono">Efetividade Geral</span>
+                  <div className="p-1.5 bg-indigo-50 rounded-lg border border-indigo-100"><TrendingUp className="w-4 h-4 text-indigo-500" /></div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-indigo-600 tracking-tight">{generalMetrics.schedulingEfficiency.toFixed(1)}%</span>
+                  <div className={`flex items-center text-[10px] font-bold ${generalMetrics.schedulingEfficiency > 75 ? "text-emerald-600" : "text-amber-600"}`}>
+                    {generalMetrics.schedulingEfficiency > 75 ? "ALTA" : "MÉDIA"}
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2 font-medium">Relação de demandas concluídas vs agendadas.</p>
+              </div>
+
+              {/* Card: Concluded */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono">Demandas Concluídas</span>
+                  <div className="p-1.5 bg-emerald-50 rounded-lg border border-emerald-100"><CheckCircle2 className="w-4 h-4 text-emerald-500" /></div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-emerald-600 tracking-tight">{generalMetrics.totalCompleted}</span>
+                  <span className="text-2xs font-bold text-slate-400 uppercase">OS</span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2 font-medium">Serviços executados com sucesso em campo.</p>
+              </div>
+
+              {/* Card: Capex/Recolhimento */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-2">
+                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest font-mono">Taxa de Recolhimento</span>
+                  <div className="p-1.5 bg-amber-50 rounded-lg border border-amber-100"><PackageCheck className="w-4 h-4 text-amber-500" /></div>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-amber-600 tracking-tight">{recolhimentoMetrics.retrievalEffectiveness.toFixed(1)}%</span>
+                  <span className="text-2xs font-bold text-slate-400 uppercase">EFETIVO</span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-2 font-medium">Recuperação de equipamentos em cancelamentos.</p>
+              </div>
+            </div>
+
+            {/* Charts Section Row */}
+            <div className="grid grid-cols-12 gap-6">
               
-              <div className="my-auto">
-                <h2 className="text-4xl font-bold font-display text-slate-900">
-                  {generalMetrics.schedulingEfficiency.toFixed(1)}%
-                </h2>
-                <p className="text-2xs text-slate-500 mt-1 font-mono">
-                  {generalMetrics.totalCompleted} ordens concluídas de {generalMetrics.totalDemands} planejadas
-                </p>
-              </div>
-
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                <div 
-                  className="bg-emerald-500 h-2 rounded-full transition-all duration-550" 
-                  style={{ width: `${generalMetrics.schedulingEfficiency}%` }}
-                />
-              </div>
-            </div>
-
-            {/* CARD 2: CONCLUDED VOLUMES AREA COMPOSE (BENTO COL-8) */}
-            <div className="col-span-12 md:col-span-8 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between hover:border-indigo-400 transition duration-150">
-              <div className="flex justify-between items-start border-b border-slate-100 pb-3 mb-4">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Distribuição de Demandas Concluídas</span>
-                  <p className="text-3xs text-slate-400 font-mono">Métricas de entrega segmentadas por setor das OS síncronas</p>
-                </div>
-                <span className="text-3xs text-slate-400 font-mono">MÉTRICAS POR SETOR</span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 flex-1 items-center pb-2">
-                <div className="flex flex-col p-3.5 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition">
-                  <span className="text-xs font-semibold text-slate-500">Ativações</span>
-                  <span className="text-2xl font-bold text-sky-600 mt-1">{generalMetrics.completedAtivacoes}</span>
-                  <span className="text-4xs font-mono text-slate-400 mt-0.5">de {generalMetrics.totalAtivacoes} agendamentos</span>
-                </div>
-
-                <div className="flex flex-col p-3.5 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition">
-                  <span className="text-xs font-semibold text-slate-500">Suporte Técnico</span>
-                  <span className="text-2xl font-bold text-indigo-600 mt-1">{generalMetrics.completedSuporte}</span>
-                  <span className="text-4xs font-mono text-slate-400 mt-0.5">de {generalMetrics.totalSuporte} agendamentos</span>
-                </div>
-
-                <div className="flex flex-col p-3.5 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition">
-                  <span className="text-xs font-semibold text-slate-500">Infra & Eng.</span>
-                  <span className="text-2xl font-bold text-emerald-600 mt-1">{generalMetrics.completedInfraestrutura}</span>
-                  <span className="text-4xs font-mono text-slate-400 mt-0.5">de {generalMetrics.totalInfraestrutura} agendamentos</span>
-                </div>
-
-                <div className="flex flex-col p-3.5 bg-slate-50 rounded-xl border border-slate-100 hover:bg-slate-100 transition">
-                  <span className="text-xs font-semibold text-slate-500">Recolhimento</span>
-                  <span className="text-2xl font-bold text-amber-600 mt-1">{generalMetrics.completedRecolhimentos}</span>
-                  <span className="text-4xs font-mono text-slate-400 mt-0.5">de {generalMetrics.totalRecolhimentos} agendamentos</span>
-                </div>
-              </div>
-            </div>
-
-            {/* CARD 3: TEMPORAL CHRONOLOGICAL LOGISTIC LINE PROGRESS (BENTO COL-8) */}
-            <div className="col-span-12 md:col-span-8 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-              <div className="flex items-center justify-between mb-6 pb-3 border-b border-slate-100">
-                <div>
-                  <h3 className="text-xs font-bold text-slate-900 font-display uppercase tracking-widest flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-indigo-500" />
-                    Cronologia Logística Real-Time
-                  </h3>
-                  <p className="text-3xs text-slate-400 font-mono">Variações e tendências das últimas datas agregados</p>
+              {/* Chart: Temporal Trend (COL-8) */}
+              <div className="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                    📈 Tendência Temporal de Produtividade
+                  </h4>
+                  <div className="flex items-center gap-4 text-[10px] font-bold font-mono uppercase tracking-tighter">
+                    <div className="flex items-center gap-1.5 text-indigo-500"><span className="w-2 h-2 rounded-full bg-indigo-500" /> Agendado</div>
+                    <div className="flex items-center gap-1.5 text-emerald-500"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Concluído</div>
+                  </div>
                 </div>
                 
-                <div className="flex items-center gap-3 text-3xs font-mono">
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-indigo-600 rounded-xs" /> Concluído</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-rose-500 rounded-xs" /> Falhas</span>
-                </div>
-              </div>
-
-              <div className="h-[250px]">
-                {chartTrendData.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-slate-400 text-xs font-mono">
-                    Sem dados históricos condizentes disponíveis.
-                  </div>
-                ) : (
+                <div className="h-[280px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                    <AreaChart data={chartTrendData}>
                       <defs>
-                        <linearGradient id="colorConcluido" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.25}/>
-                          <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
+                        <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366F1" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#6366F1" stopOpacity={0}/>
                         </linearGradient>
-                        <linearGradient id="colorFalha" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#ef4444" stopOpacity={0.25}/>
-                          <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+                        <linearGradient id="colorConcluido" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/>
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                      <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} tickLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} />
-                      <Tooltip 
-                        contentStyle={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "11px" }}
+                      <XAxis 
+                        dataKey="name" 
+                        stroke="#94a3b8" 
+                        fontSize={9} 
+                        tickLine={false} 
+                        axisLine={false} 
+                        dy={10}
                       />
-                      <Area type="monotone" dataKey="concluido" stroke="#4F46E5" strokeWidth={2.5} fillOpacity={1} fill="url(#colorConcluido)" name="Concluídos" />
-                      <Area type="monotone" dataKey="falhas" stroke="#EF4444" strokeWidth={2.5} fillOpacity={1} fill="url(#colorFalha)" name="Não Realizados" />
+                      <YAxis 
+                        stroke="#94a3b8" 
+                        fontSize={9} 
+                        tickLine={false} 
+                        axisLine={false} 
+                      />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        labelStyle={{ fontWeight: 'bold', marginBottom: '4px', fontSize: '11px' }}
+                        itemStyle={{ fontSize: '10px', padding: '2px 0' }}
+                      />
+                      <Area type="monotone" dataKey="total" stroke="#6366F1" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" name="Agendamentos" />
+                      <Area type="monotone" dataKey="concluido" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorConcluido)" name="Concluídos" />
                     </AreaChart>
                   </ResponsiveContainer>
-                )}
-              </div>
-            </div>
-
-            {/* CARD 4: CATEGORY BREAKDOWN COMPOSITION (BENTO COL-4) */}
-            <div className="col-span-12 md:col-span-4 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 font-display uppercase tracking-widest flex items-center gap-1.5 border-b border-slate-100 pb-3 mb-1">
-                  <Layers className="w-4 h-4 text-emerald-500" />
-                  Composição de OS
-                </h3>
-                <p className="text-3xs text-slate-400 font-mono">Fatias por Área de Atendimento</p>
+                </div>
               </div>
 
-              <div className="h-[180px] flex items-center justify-center relative">
-                {chartCategoryData.length === 0 ? (
-                  <span className="text-xs text-slate-400 font-mono">Sem dados</span>
-                ) : (
+              {/* Chart: Category Mix (COL-4) */}
+              <div className="col-span-12 lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
+                <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-6 border-b border-slate-100 pb-3">
+                  🥧 Mix de Áreas Operacionais
+                </h4>
+                
+                <div className="h-[200px] w-full relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={chartCategoryData}
+                        cx="50%"
+                        cy="50%"
                         innerRadius={55}
                         outerRadius={75}
-                        paddingAngle={3}
+                        paddingAngle={6}
                         dataKey="value"
                       >
                         {chartCategoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
+                          <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value) => `${value} chamados`} />
+                      <Tooltip />
                     </PieChart>
                   </ResponsiveContainer>
-                )}
-                {/* Center text metrics */}
-                <div className="absolute text-center">
-                  <p className="text-[10px] font-mono text-slate-400 uppercase">VOLUME</p>
-                  <p className="text-2xl font-bold font-display text-slate-800">{generalMetrics.totalDemands}</p>
-                </div>
-              </div>
-
-              {/* Grid Legends */}
-              <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-slate-100">
-                {chartCategoryData.map((item, i) => (
-                  <div key={i} className="flex items-center space-x-1.5">
-                    <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="text-[10px] text-slate-600 font-medium truncate" title={`${item.name} (${item.value})`}>
-                      {item.name}: <b>{item.value}</b>
-                    </span>
+                  {/* Center Text */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase font-mono">Volume</span>
+                    <span className="text-xl font-black text-slate-900 tracking-tighter">{generalMetrics.totalDemands}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* CARD 5: DETAILED STATUS METRICS (BENTO COL-12) */}
-            <div className="col-span-12 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-              <h4 className="text-xs font-bold text-slate-400 font-mono uppercase tracking-widest mb-4 flex items-center gap-1.5">
-                <AlertCircle className="w-4 h-4 text-amber-500" />
-                Auditoria de Status da Equipe Operacional
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
-                  <span className="text-2xs font-semibold text-emerald-800 uppercase block font-mono">✓ Concluído com Sucesso</span>
-                  <span className="text-3xl font-bold text-emerald-700 block mt-1">{generalMetrics.totalCompleted}</span>
-                  <span className="text-3xs text-emerald-600 font-mono leading-normal block mt-1">Alta sinergia e resolutividade</span>
                 </div>
 
-                <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
-                  <span className="text-2xs font-semibold text-amber-800 uppercase block font-mono">⚠️ Reagendado pela Equipe</span>
-                  <span className="text-3xl font-bold text-amber-700 block mt-1">
-                    {filteredDemands.filter(d => d.status.toLowerCase().includes("reagendado")).length}
-                  </span>
-                  <span className="text-3xs text-amber-600 font-mono leading-normal block mt-1">Gargalos operacionais ou de clima</span>
-                </div>
-
-                <div className="bg-rose-50/50 p-4 rounded-xl border border-rose-100">
-                  <span className="text-2xs font-semibold text-rose-800 uppercase block font-mono">❌ Não Realizado no Período</span>
-                  <span className="text-3xl font-bold text-rose-700 block mt-1">
-                    {filteredDemands.filter(d => d.status.toLowerCase().includes("não") || d.status.toLowerCase().includes("nao")).length}
-                  </span>
-                  <span className="text-3xs text-rose-600 font-mono leading-normal block mt-1">Fracassos ou envio direto a cobrança</span>
-                </div>
-
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <span className="text-2xs font-semibold text-slate-700 uppercase block font-mono">⏳ Pendentes na Fila</span>
-                  <span className="text-3xl font-bold text-slate-800 block mt-1">
-                    {filteredDemands.filter(d => d.status.toLowerCase().includes("pendente") || d.status.trim() === "").length}
-                  </span>
-                  <span className="text-3xs text-slate-500 font-mono leading-normal block mt-1">Chamados em aguardo de resposta</span>
+                {/* Legend list */}
+                <div className="mt-6 space-y-3 flex-1">
+                  {chartCategoryData.map((item, i) => {
+                    const pct = (item.value / generalMetrics.totalDemands) * 100;
+                    const eff = item.value > 0 ? (item.completed / item.value) * 100 : 0;
+                    return (
+                      <div key={i} className="flex items-center justify-between group">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: item.color }} />
+                          <span className="text-2xs font-bold text-slate-700">{item.name}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-black text-slate-900 block">{pct.toFixed(0)}%</span>
+                          <span className={`text-[8px] font-bold uppercase ${eff > 75 ? "text-emerald-500" : "text-amber-500"}`}>
+                            {eff.toFixed(0)}% Eficaz
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+
             </div>
 
           </div>
         )}
 
-        {/* BENTO GRID SPACE: VIEW 2 - PORTAL EXCLUSIVO DE RECOLHIMENTOS */}
+        {/* BENTO GRID: VIEW - EFICIÊNCIA OPERACIONAL 2.0 */}
+        {!loading && activeTab === "eficiencia" && operationalEfficiencyMetrics && schedulingAdherenceMetrics && (
+          <div className="space-y-6">
+            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+              <span className="text-3xs uppercase tracking-widest text-blue-600 font-bold font-mono">Análise de Desempenho Operacional</span>
+              <h3 className="text-2xl font-bold text-slate-900 font-display mt-1">Eficiência e Aderência do Agendamento</h3>
+              <p className="text-xs text-slate-500 mt-2 max-w-2xl leading-relaxed">
+                Este painel utiliza os dados das colunas <b>Nível</b> e <b>Grupos</b> do novo relatório para medir a precisão real da equipe técnica em campo, desconsiderando atividades administrativas ou sem deslocamento.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Eficiência Operacional Card */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-blue-800 font-bold flex items-center gap-2 mb-2 text-sm uppercase tracking-wider"><TrendingUp size={18} /> Eficiência Operacional</h3>
+                  <p className="text-3xs text-slate-500 mb-4 font-mono uppercase tracking-tight">Relação de serviços concluídos com deslocamento</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-5xl font-black text-blue-600 tracking-tighter">{operationalEfficiencyMetrics.operationalEfficiency.toFixed(1)}%</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-[10px] font-bold border border-blue-100">
+                        {operationalEfficiencyMetrics.completedDemandsWithDisplacement} Concluídos
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-medium">de {operationalEfficiencyMetrics.totalDemandsWithDisplacement} totais</div>
+                    </div>
+                  </div>
+                  <div className="w-24 h-24">
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie 
+                          data={[
+                            { value: operationalEfficiencyMetrics.operationalEfficiency }, 
+                            { value: 100 - operationalEfficiencyMetrics.operationalEfficiency }
+                          ]} 
+                          innerRadius={30} 
+                          outerRadius={45} 
+                          startAngle={90}
+                          endAngle={-270}
+                          dataKey="value"
+                        >
+                          <Cell fill="#2563eb" />
+                          <Cell fill="#f1f5f9" />
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100 text-[10px] text-slate-500 italic">
+                  * Considera apenas linhas marcadas como "com_deslocamento" no relatório.
+                </div>
+              </div>
+
+              {/* Aderência do Agendamento Card */}
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 flex flex-col justify-between">
+                <div>
+                  <h3 className="text-emerald-800 font-bold flex items-center gap-2 mb-2 text-sm uppercase tracking-wider"><CheckCircle2 size={18} /> Aderência do Agendamento</h3>
+                  <p className="text-3xs text-slate-500 mb-4 font-mono uppercase tracking-tight">Qualidade do planejamento técnico</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-5xl font-black text-emerald-600 tracking-tighter">{schedulingAdherenceMetrics.schedulingAdherence.toFixed(1)}%</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold border border-emerald-100">
+                        {schedulingAdherenceMetrics.adherentDemands} Aderentes
+                      </div>
+                      <div className="text-[10px] text-slate-400 font-medium">de {schedulingAdherenceMetrics.totalDemandsForAdherence} elegíveis</div>
+                    </div>
+                  </div>
+                  <div className="w-24 h-24">
+                    <ResponsiveContainer>
+                      <PieChart>
+                        <Pie 
+                          data={[
+                            { value: schedulingAdherenceMetrics.schedulingAdherence }, 
+                            { value: 100 - schedulingAdherenceMetrics.schedulingAdherence }
+                          ]} 
+                          innerRadius={30} 
+                          outerRadius={45} 
+                          startAngle={90}
+                          endAngle={-270}
+                          dataKey="value"
+                        >
+                          <Cell fill="#10b981" />
+                          <Cell fill="#f1f5f9" />
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div className="mt-6 pt-4 border-t border-slate-100 text-[10px] text-slate-500 italic">
+                  * Exclui Recolhimentos, Cancelamentos e Entregas de Carnê para medir o nível de acerto da equipe.
+                </div>
+              </div>
+            </div>
+
+            {/* Informational Banner */}
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-6 flex items-start gap-4 shadow-sm">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-200">
+                <Info size={20} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-indigo-900 uppercase tracking-tight">Por que estas métricas importam?</h4>
+                <p className="text-xs text-indigo-800 mt-1 leading-relaxed">
+                  Diferente da Eficiência Geral, a <b>Eficiência Operacional</b> foca apenas em demandas onde houve deslocamento físico, eliminando o ruído de tarefas administrativas. Já a <b>Aderência</b> valida se a equipe de agendamento está direcionando os técnicos para serviços com alta probabilidade de execução, filtrando tipos de serviço que historicamente possuem maior taxa de insucesso por parte do cliente.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* BENTO GRID SPACE: VIEW 2 - CONTROLE DE RECOLHIMENTOS (CAPEX) */}
         {!loading && activeTab === "recolhimentos" && (
           <div className="space-y-6">
             
-            {/* INCREDIBLE BENTO COMPLEX DESIGN: GLOWING DEEP SLATE PANEL (COL-12) */}
-            <div className="bg-[#0F172A] text-white rounded-3xl p-6 md:p-8 shadow-xl border border-slate-800 relative overflow-hidden flex flex-col md:flex-row gap-6 justify-between items-stretch">
-              
-              <div className="flex-1 flex flex-col justify-between">
-                <div>
-                  <span className="text-indigo-400 text-xs font-bold uppercase tracking-widest font-mono">PORTAL DE PROTEÇÃO DE CAPEX</span>
-                  <h3 className="text-white text-3xl font-bold font-display mt-2">Visão Geral de Recolhimento & Cancelamentos</h3>
-                  <p className="text-xs text-slate-400 mt-2 max-w-xl leading-relaxed">
-                    Mapeamento refinado de tentativas de recuperação de equipamentos. Medição de performance de reagendamentos ("equipe não foi") e perdas financeiras direcionadas para a cobrança automática.
-                  </p>
-                </div>
-
-                {/* Progress metrics */}
-                <div className="mt-6 md:mt-12 bg-white/5 border border-white/10 rounded-2xl p-4 max-w-md">
-                  <div className="flex justify-between items-center text-xs text-slate-300 mb-2 font-medium">
-                    <span>Recuperação de Materiais Efetiva</span>
-                    <span className="font-bold text-emerald-400">{recolhimentoMetrics.retrievalEffectiveness.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-emerald-400 h-2.5 rounded-full transition-all duration-550" 
-                      style={{ width: `${recolhimentoMetrics.retrievalEffectiveness}%` }}
-                    />
-                  </div>
-                </div>
+            {/* KPI Cards Row for Recolhimento */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block mb-1">Total de Tentativas</span>
+                <span className="text-3xl font-black text-slate-900 tracking-tight">{recolhimentoMetrics.totalAttempts}</span>
               </div>
-
-              {/* Bento cards stack */}
-              <div className="w-full md:w-80 flex flex-col gap-3">
-                
-                {/* Mini Card 1 - Efetivos */}
-                <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex hover:bg-white/10 transition">
-                  <div className="mr-3 p-2 bg-emerald-500/10 text-emerald-400 rounded-xl flex items-center">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-3xs uppercase font-mono">Recolhidos Efetivos</span>
-                    <h4 className="text-xl font-bold text-white mt-0.5">{recolhimentoMetrics.effectiveRetrievals}</h4>
-                    <p className="text-[10px] text-slate-550 font-mono mt-0.5">Equipamentos recuperados</p>
-                  </div>
-                </div>
-
-                {/* Mini Card 2 - Ausência de Cliente */}
-                <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex hover:bg-white/10 transition">
-                  <div className="mr-3 p-2 bg-blue-500/10 text-blue-400 rounded-xl flex items-center">
-                    <Users className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-3xs uppercase font-mono">Cliente Ausente</span>
-                    <h4 className="text-xl font-bold text-blue-400 mt-0.5">{recolhimentoMetrics.clientAusente}</h4>
-                    <p className="text-[10px] text-slate-550 font-mono mt-0.5">Endereço fechado / Ausente</p>
-                  </div>
-                </div>
-
-                {/* Mini Card 3 - Recusa do Usuário */}
-                <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex hover:bg-white/10 transition">
-                  <div className="mr-3 p-2 bg-violet-500/10 text-violet-400 rounded-xl flex items-center">
-                    <AlertCircle className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-3xs uppercase font-mono">Recusas / Retenções</span>
-                    <h4 className="text-xl font-bold text-violet-400 mt-0.5">{recolhimentoMetrics.clientRefused}</h4>
-                    <p className="text-[10px] text-slate-550 font-mono mt-0.5">Não devolve / Se recusou</p>
-                  </div>
-                </div>
-
-                {/* Mini Card 4 - Cobrança */}
-                <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex hover:bg-white/10 transition">
-                  <div className="mr-3 p-2 bg-rose-500/10 text-rose-400 rounded-xl flex items-center">
-                    <CreditCard className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-3xs uppercase font-mono">Enviados Cobrança</span>
-                    <h4 className="text-xl font-bold text-rose-400 mt-0.5">{recolhimentoMetrics.sentToBilling}</h4>
-                    <p className="text-[10px] text-slate-550 font-mono mt-0.5">Fracasso + Fatura de Multa</p>
-                  </div>
-                </div>
-
-                {/* Mini Card 5 - Ausências de Equipe */}
-                <div className="bg-white/5 rounded-2xl p-3 border border-white/10 flex hover:bg-white/10 transition">
-                  <div className="mr-3 p-2 bg-amber-500/10 text-amber-400 rounded-xl flex items-center">
-                    <Wrench className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <span className="text-slate-400 text-3xs uppercase font-mono">Equipe &quot;Não Foi&quot;</span>
-                    <h4 className="text-xl font-bold text-amber-400 mt-0.5">{recolhimentoMetrics.teamDidNotGo}</h4>
-                    <p className="text-[10px] text-slate-550 font-mono mt-0.5">Falha de campo operacional</p>
-                  </div>
-                </div>
-
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm ring-1 ring-emerald-500/10">
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block mb-1">Efetividade Capex</span>
+                <span className="text-3xl font-black text-emerald-600 tracking-tight">{recolhimentoMetrics.retrievalEffectiveness.toFixed(1)}%</span>
               </div>
-
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm ring-1 ring-amber-500/10">
+                <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest font-mono block mb-1">Encaminhado Multa</span>
+                <span className="text-3xl font-black text-amber-600 tracking-tight">{recolhimentoMetrics.sentToBilling}</span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono block mb-1">Equipamentos Recuperados</span>
+                <span className="text-3xl font-black text-slate-900 tracking-tight">{recolhimentoMetrics.effectiveRetrievals}</span>
+              </div>
             </div>
 
-            {/* BENTO STATS BREAKDOWNS (ROW 2) */}
             <div className="grid grid-cols-12 gap-6">
               
-              {/* CARD 1: EXECUTIVES BAR METRICS FOR MOTIVE AUDITS (COL-8) */}
-              <div className="col-span-12 md:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <h3 className="text-xs font-bold text-slate-900 font-display uppercase tracking-widest mb-4 flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                  <Wrench className="w-4 h-4 text-slate-600" />
-                  Auditoria de Tentativas de Recolhimento por Razões de Campo
-                </h3>
+              {/* Funnel chart simulated / Reasons for loss (COL-8) */}
+              <div className="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-1.5 border-b border-slate-100 pb-3">
+                  ⚠️ Análise de Perda de Equipamento (Não Recuperados)
+                </h4>
                 
-                <div className="h-[250px]">
+                <div className="h-[280px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={[
-                        { name: "Total Tentativas", valor: recolhimentoMetrics.totalAttempts, fill: "#64748B" },
-                        { name: "Recuperado", valor: recolhimentoMetrics.effectiveRetrievals, fill: "#10B981" },
-                        { name: "Ausência Cliente", valor: recolhimentoMetrics.clientAusente, fill: "#3B82F6" },
-                        { name: "Recusa / Retido", valor: recolhimentoMetrics.clientRefused, fill: "#8B5CF6" },
-                        { name: "Equipe Não Foi", valor: recolhimentoMetrics.teamDidNotGo, fill: "#F59E0B" },
-                        { name: "Multa Cobrança", valor: recolhimentoMetrics.sentToBilling, fill: "#EF4444" }
-                      ]}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                        { name: "Cobrança Financeira", value: recolhimentoMetrics.sentToBilling, fill: "#F59E0B" },
+                        { name: "Cliente Ausente", value: recolhimentoMetrics.clientAusente, fill: "#6366F1" },
+                        { name: "Equipe Não Compareceu", value: recolhimentoMetrics.teamDidNotGo, fill: "#EF4444" },
+                        { name: "Cliente Recusou Devolver", value: recolhimentoMetrics.clientRefused, fill: "#475569" }
+                      ].sort((a, b) => b.value - a.value)}
+                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                      <XAxis dataKey="name" stroke="#94a3b8" fontSize={8} tickLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} />
-                      <Tooltip formatter={(value) => `${value} ordens`} />
-                      <Bar dataKey="valor" radius={[6, 6, 0, 0]}>
-                        <Cell fill="#64748B" />
-                        <Cell fill="#10B981" />
-                        <Cell fill="#3B82F6" />
-                        <Cell fill="#8B5CF6" />
-                        <Cell fill="#F59E0B" />
-                        <Cell fill="#EF4444" />
-                      </Bar>
+                      <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              {/* CARD 2: ADMONISHMENTS PANELS (COL-4) */}
-              <div className="col-span-12 md:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between font-sans">
+              {/* Loss breakdown summary (COL-4) */}
+              <div className="col-span-12 lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
                 <div>
-                  <h3 className="text-xs font-bold text-slate-900 font-display uppercase tracking-widest flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                    <Info className="w-4 h-4 text-indigo-500" />
-                    Medidas Logísticas de Ativos
-                  </h3>
-                  
-                  <div className="space-y-3 mt-3">
-                    <div className="p-2.5 bg-red-50 border border-red-100 rounded-xl text-3xs">
-                      <h4 className="text-xs font-bold text-red-900">Ausência da Equipe Técnica</h4>
-                      <p className="text-[10px] text-red-750 leading-relaxed mt-1 font-sans">
-                        Identificamos <b>{recolhimentoMetrics.teamDidNotGo} reagendamentos</b> por culpa interna (&quot;equipe não foi&quot;). Representa desperdício financeiro direto em deslocamentos.
-                      </p>
+                  <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-3">
+                    📉 Impacto de Faturamento
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
+                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Encaminhado para Multa</span>
+                      <span className="text-2xl font-black text-amber-700">{recolhimentoMetrics.sentToBilling} Unidades</span>
+                      <p className="text-[10px] text-amber-800 mt-2 leading-relaxed">Equipamentos que não foram recuperados e já possuem justificativa para lançamento de multa contratual no próximo ciclo.</p>
                     </div>
 
-                    <div className="p-2.5 bg-blue-50 border border-blue-100 rounded-xl text-3xs">
-                      <h4 className="text-xs font-bold text-blue-900">Ausentismos & Recusas</h4>
-                      <p className="text-[10px] text-blue-750 leading-relaxed mt-1 font-sans">
-                        <b>{recolhimentoMetrics.clientAusente} clientes ausentes</b> e <b>{recolhimentoMetrics.clientRefused} recusas</b> de devolução mostram a necessidade de agendamentos mais firmes.
-                      </p>
-                    </div>
-
-                    <div className="p-2.5 bg-amber-50 border border-amber-100 rounded-xl text-3xs">
-                      <h4 className="text-xs font-bold text-amber-900">Direcionamento à Cobrança</h4>
-                      <p className="text-[10px] text-amber-750 leading-relaxed mt-1 font-sans">
-                        Os <b>{recolhimentoMetrics.sentToBilling} chamados</b> direcionados à cobrança contratual evitam o prolongamento e geram faturamento compensatório de Capex.
-                      </p>
+                    <div className="p-4 rounded-xl bg-rose-50 border border-rose-100">
+                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block mb-1">Perda por Falha Operacional</span>
+                      <span className="text-2xl font-black text-rose-700">{recolhimentoMetrics.teamDidNotGo} Unidades</span>
+                      <p className="text-[10px] text-rose-800 mt-2 leading-relaxed">Equipamentos não recolhidos porque a equipe técnica não compareceu ao local agendado no dia.</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="text-[10px] text-slate-400 font-mono text-center pt-2 border-t border-slate-100 mt-4">
-                  Meta Empresarial de Perda de Capex: &lt; 15%
+                  Meta Empresarial de Perda de Capex: < 15%
                 </div>
               </div>
 
@@ -1679,6 +1672,180 @@ const handleLogin = async (e: React.FormEvent) => {
           </div>
         )}
 
+        {/* BENTO GRID SPACE: VIEW 4 - GERENCIAMENTO DE USUÁRIOS (ADMIN ONLY) */}
+        {!loading && activeTab === "usuarios" && currentUser?.role === "Admin" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-12 gap-6">
+              
+              {/* User Creation Form (COL-5) */}
+              <div className="col-span-12 lg:col-span-5 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <UserIcon className="w-4 h-4 text-indigo-500" />
+                  {editingUsername ? "Editar Usuário" : "Cadastrar Novo Usuário"}
+                </h4>
+
+                <form onSubmit={handleCreateOrUpdateUser} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 font-mono">Nome Completo</label>
+                      <input 
+                        type="text" 
+                        value={userForm.name}
+                        onChange={e => setUserForm({...userForm, name: e.target.value})}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-indigo-500"
+                        placeholder="Ex: Cristiano Kuhn"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 font-mono">Usuário (Login)</label>
+                      <input 
+                        type="text" 
+                        value={userForm.username}
+                        disabled={!!editingUsername}
+                        onChange={e => setUserForm({...userForm, username: e.target.value})}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-indigo-500 disabled:bg-slate-100"
+                        placeholder="cristiano.kuhn"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 font-mono">Senha</label>
+                      <input 
+                        type="password" 
+                        value={userForm.password}
+                        onChange={e => setUserForm({...userForm, password: e.target.value})}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-indigo-500"
+                        placeholder="********"
+                        required={!editingUsername}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 font-mono">E-mail Corporativo</label>
+                      <input 
+                        type="email" 
+                        value={userForm.email}
+                        onChange={e => setUserForm({...userForm, email: e.target.value})}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-indigo-500"
+                        placeholder="cristiano@empresa.com.br"
+                        required
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 font-mono">Nível de Acesso</label>
+                      <select 
+                        value={userForm.role}
+                        onChange={e => setUserForm({...userForm, role: e.target.value})}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:border-indigo-500"
+                      >
+                        <option value="Admin">Administrador (Total)</option>
+                        <option value="Gerente">Gerente (Relatórios)</option>
+                        <option value="Colaborador">Colaborador (Visualização)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {userError && <p className="text-2xs text-rose-600 font-bold bg-rose-50 p-2 rounded border border-rose-100">{userError}</p>}
+                  {userSuccess && <p className="text-2xs text-emerald-600 font-bold bg-emerald-50 p-2 rounded border border-emerald-100">{userSuccess}</p>}
+
+                  <div className="flex gap-2 pt-2">
+                    <button 
+                      type="submit" 
+                      disabled={submittingUser}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-lg text-xs transition disabled:opacity-50 cursor-pointer"
+                    >
+                      {submittingUser ? "Salvando..." : (editingUsername ? "Salvar Alterações" : "Criar Conta")}
+                    </button>
+                    {editingUsername && (
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setEditingUsername(null);
+                          setUserForm({name: "", username: "", password: "", email: "", role: "Colaborador"});
+                        }}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-bold cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+
+              {/* Users List (COL-7) */}
+              <div className="col-span-12 lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-3">
+                  <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest">Contas Registradas</h4>
+                  <span className="text-2xs text-slate-400 font-mono">{registeredUsers.length} usuários</span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                        <th className="pb-2 pr-4">Nome</th>
+                        <th className="pb-2 pr-4">Usuário</th>
+                        <th className="pb-2 pr-4">Nível</th>
+                        <th className="pb-2 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {fetchingUsers ? (
+                        <tr><td colSpan={4} className="py-8 text-center text-xs text-slate-400">Carregando lista...</td></tr>
+                      ) : registeredUsers.map((u, i) => (
+                        <tr key={i} className="group hover:bg-slate-50 transition">
+                          <td className="py-3 pr-4">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-bold text-slate-800">{u.name}</span>
+                              <span className="text-[10px] text-slate-400">{u.email}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 pr-4 font-mono text-[10px] text-indigo-600">{u.username}</td>
+                          <td className="py-3 pr-4">
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                              u.role === "Admin" ? "bg-indigo-50 text-indigo-700 border-indigo-100" :
+                              u.role === "Gerente" ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                              "bg-slate-50 text-slate-600 border-slate-100"
+                            }`}>{u.role}</span>
+                          </td>
+                          <td className="py-3 text-right">
+                            <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                              <button 
+                                onClick={() => {
+                                  setEditingUsername(u.username);
+                                  setUserForm({
+                                    name: u.name,
+                                    username: u.username,
+                                    password: "",
+                                    email: u.email,
+                                    role: u.role
+                                  });
+                                }}
+                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition cursor-pointer"
+                                title="Editar"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteUser(u.username)}
+                                className="p-1.5 text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
+                                title="Remover"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
         {/* HIGH CONTRAST DETAILED RECORDS MATRIX TABLE */}
         {activeTab !== "usuarios" && (
           <div className="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
@@ -1757,52 +1924,36 @@ const handleLogin = async (e: React.FormEvent) => {
                           </span>
                         </td>
                         
-                        {/* Demand name */}
+                        {/* Demand */}
                         <td className="py-3.5 px-5 font-medium text-slate-900 max-w-[200px] truncate" title={item.demand}>
                           {item.demand}
                         </td>
                         
                         {/* Status */}
                         <td className="py-3.5 px-5 whitespace-nowrap">
-                          {isCompleted && (
-                            <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md text-[10px]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                              Concluído
-                            </span>
-                          )}
-                          {isFailed && (
-                            <span className="inline-flex items-center gap-1 text-rose-700 font-semibold bg-rose-50 px-2 py-0.5 rounded-md text-[10px]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                              Não Realizado
-                            </span>
-                          )}
-                          {isRescheduled && (
-                            <span className="inline-flex items-center gap-1 text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded-md text-[10px]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                              Reagendado
-                            </span>
-                          )}
-                          {!isCompleted && !isFailed && !isRescheduled && (
-                            <span className="inline-flex items-center gap-1 text-slate-600 font-semibold bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-                              {item.status || "Pendente"}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              isCompleted ? "bg-emerald-500" : 
+                              isRescheduled ? "bg-amber-500" : 
+                              isFailed ? "bg-rose-500" : "bg-slate-400"
+                            }`} />
+                            <span className="font-bold">{item.status}</span>
+                          </div>
                         </td>
                         
-                        {/* Justification Reason */}
-                        <td className="py-3.5 px-5 text-slate-500 max-w-[150px] truncate" title={item.reason || "Nenhuma observação informada"}>
-                          {item.reason || <span className="text-slate-300 italic">Nenhuma</span>}
+                        {/* Reason */}
+                        <td className="py-3.5 px-5 text-slate-500 italic max-w-[220px] truncate" title={item.reason}>
+                          {item.reason || "—"}
                         </td>
                         
                         {/* Technician */}
-                        <td className="py-3.5 px-5 font-medium text-slate-600 whitespace-nowrap">
-                          {item.technician || <span className="text-slate-300">Não designado</span>}
+                        <td className="py-3.5 px-5 font-medium text-slate-600">
+                          {item.technician || "N/A"}
                         </td>
-
+                        
                         {/* City */}
-                        <td className="py-3.5 px-5 text-slate-550 font-medium">
-                          {item.city || "-"}
+                        <td className="py-3.5 px-5 text-slate-500 font-mono text-[10px]">
+                          {item.city || "—"}
                         </td>
                       </tr>
                     );
@@ -1812,412 +1963,111 @@ const handleLogin = async (e: React.FormEvent) => {
             </table>
           </div>
 
-          <div className="bg-slate-50 border-t border-slate-100 px-6 py-3 flex items-center justify-between text-3xs text-slate-400 font-mono">
-            <span>Visualizando registros cronológicos (máx. 40 por performance)</span>
-            <span>Total Filtrado: {filteredDemands.length} registros</span>
+          {/* Pagination simulated footer */}
+          <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex items-center justify-between">
+            <span className="text-3xs text-slate-400 font-mono uppercase font-bold">
+              Visualizando 40 de {filteredDemands.length} registros (Performance Ativa)
+            </span>
+            <div className="flex gap-1">
+               <button className="px-2 py-1 bg-white border border-slate-200 rounded text-2xs text-slate-400 cursor-not-allowed">Anterior</button>
+               <button className="px-2 py-1 bg-white border border-slate-200 rounded text-2xs text-indigo-600 hover:bg-indigo-50 transition cursor-pointer">Próxima</button>
+            </div>
           </div>
-
         </div>
         )}
 
-        {/* BENTO GRID SPACE: VIEW 4 - GESTÃO DE USUÁRIOS (ADMIN ONLY) */}
-        {!loading && activeTab === "usuarios" && currentUser?.role === "Admin" && (
-          <div className="space-y-6">
-            
-            {/* INTRODUCTORY CARD */}
-            <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm animate-fade-in">
-              <span className="text-3xs uppercase tracking-widest text-indigo-600 font-bold font-mono">Controle de Segurança e Acessos</span>
-              <h3 className="text-2xl font-bold text-slate-900 font-display mt-1">Gestão de Equipes e Permissões</h3>
-              <p className="text-xs text-slate-500 mt-2 max-w-2xl leading-relaxed font-medium">
-                Adicione novos colaboradores, redefina senhas de suporte, gerencie níveis de acesso (Admin, Gerente ou Colaborador) e envie e-mails automáticos com dados de acesso para novos membros.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-12 gap-6">
+        {/* MODAL: RECORD DRILL-DOWN (EXECUTIVE DETAIL VIEW) */}
+        {selectedRecord && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-slate-900/40">
+            <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
               
-              {/* FORM: ADD OR EDIT USER (COL-4) */}
-              <div className="col-span-12 lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-fit">
-                <h4 className="text-xs font-bold font-mono text-slate-950 uppercase tracking-widest mb-4 flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                  <Shield className="w-4 h-4 text-indigo-500" />
-                  {editingUsername ? "✏️ Editar Usuário" : "👤 Novo Usuário"}
-                </h4>
-
-                {userError && (
-                  <div className="mb-4 p-3 bg-red-50 border border-red-100 text-red-750 text-xs rounded-xl flex gap-1.5 items-start">
-                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <span>{userError}</span>
-                  </div>
-                )}
-
-                {userSuccess && (
-                  <div className="mb-4 p-3 bg-emerald-50 border border-emerald-100 text-emerald-750 text-xs rounded-xl flex gap-1.5 items-start">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                    <span>{userSuccess}</span>
-                  </div>
-                )}
-
-                <form onSubmit={handleCreateOrUpdateUser} className="space-y-4">
-                  {/* Name field */}
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1 font-mono">Nome Completo</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-lg text-xs text-slate-900 focus:outline-none transition font-sans"
-                      placeholder="Ex: Cristiano Rafael Kuhn"
-                      value={userForm.name}
-                      onChange={(e) => setUserForm(p => ({ ...p, name: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  {/* Username field */}
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1 font-mono">Usuário (Login)</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-lg text-xs text-slate-900 focus:outline-none transition font-sans disabled:opacity-50"
-                      placeholder="Ex: cristiano.kuhn"
-                      value={userForm.username}
-                      onChange={(e) => setUserForm(p => ({ ...p, username: e.target.value }))}
-                      disabled={!!editingUsername}
-                      required
-                    />
-                    {editingUsername && <p className="text-[9px] text-slate-400 font-mono mt-1">Nome de usuário não editável.</p>}
-                  </div>
-
-                  {/* Password field */}
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1 font-mono">Senha de Acesso</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-lg text-xs text-slate-900 focus:outline-none transition font-mono"
-                      placeholder="Ex: Digite uma senha"
-                      value={userForm.password}
-                      onChange={(e) => setUserForm(p => ({ ...p, password: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  {/* Email field */}
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1 font-mono">E-mail Profissional</label>
-                    <input
-                      type="email"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-lg text-xs text-slate-900 focus:outline-none transition font-sans"
-                      placeholder="Ex: cristiano@empresa.com"
-                      value={userForm.email}
-                      onChange={(e) => setUserForm(p => ({ ...p, email: e.target.value }))}
-                      required
-                    />
-                  </div>
-
-                  {/* Level / Role field */}
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1 font-mono">Nível de Acesso</label>
-                    <select
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-lg text-xs text-slate-900 focus:outline-none transition font-sans font-semibold cursor-pointer"
-                      value={userForm.role}
-                      onChange={(e) => setUserForm(p => ({ ...p, role: e.target.value }))}
-                      required
-                    >
-                      <option value="Admin">Admin</option>
-                      <option value="Gerente">Gerente</option>
-                      <option value="Colaborador">Colaborador</option>
-                    </select>
-                  </div>
-
-                  {/* Buttons */}
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      type="submit"
-                      disabled={submittingUser}
-                      className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg text-xs transition duration-150 cursor-pointer disabled:opacity-50"
-                    >
-                      {submittingUser ? "Salvando..." : (editingUsername ? "Atualizar" : "Cadastrar")}
-                    </button>
-                    {editingUsername && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingUsername(null);
-                          setUserForm({
-                            name: "",
-                            username: "",
-                            password: "",
-                            email: "",
-                            role: "Colaborador"
-                          });
-                        }}
-                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 px-3 rounded-lg text-xs transition duration-150 cursor-pointer"
-                      >
-                        Cancelar
-                      </button>
-                    )}
-                  </div>
-                </form>
+              {/* Modal Header */}
+              <div className="bg-slate-900 text-white p-6 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-bold font-display tracking-tight">Dossiê de Ordem de Serviço</h3>
+                  <p className="text-2xs text-slate-400 font-mono uppercase mt-1">Identificador Protocolo: #{selectedRecord.protocol_number || "S/P"}</p>
+                </div>
+                <button 
+                  onClick={() => setSelectedRecord(null)}
+                  className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition cursor-pointer"
+                >
+                  <XCircle className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* TABLE: ALL MEMBERS LIST & ACTIONS (COL-8) */}
-              <div className="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                  <h4 className="text-xs font-bold font-mono text-slate-950 uppercase tracking-widest flex items-center gap-1.5">
-                    <Users className="w-4 h-4 text-indigo-500" />
-                    Membros do Sistema ({registeredUsers.length})
-                  </h4>
-                  <span className="text-3xs text-slate-400 font-mono">Cadastrados via Banco Local (server.ts)</span>
+              {/* Modal Content */}
+              <div className="p-8">
+                <div className="grid grid-cols-2 gap-8 mb-8">
+                  <div className="space-y-4">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">📅 Data do Agendamento</span>
+                      <p className="text-sm font-bold text-slate-900">{selectedRecord.date}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">🗂️ Área Operacional</span>
+                      <p className="text-sm font-bold text-slate-900">{selectedRecord.category}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">🔧 Técnico Responsável</span>
+                      <p className="text-sm font-bold text-slate-900">{selectedRecord.technician}</p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">📍 Cidade / Unidade</span>
+                      <p className="text-sm font-bold text-slate-900">{selectedRecord.city || "Não informado"}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">💡 Status Final de Campo</span>
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold ${
+                        isStatusCompleted(selectedRecord.status) ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
+                      }`}>
+                        {selectedRecord.status}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">📄 Tipo de Demanda</span>
+                      <p className="text-xs font-medium text-slate-700 leading-relaxed">{selectedRecord.demand}</p>
+                    </div>
+                  </div>
                 </div>
 
-                {fetchingUsers ? (
-                  <div className="flex flex-col items-center justify-center py-12">
-                    <RefreshCw className="w-6 h-6 text-indigo-600 animate-spin mb-2" />
-                    <span className="text-3xs text-slate-400 font-mono">Buscando lista de credenciais...</span>
+                {/* Justification highlight box */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6">
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-3 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-indigo-500" />
+                    Justificativa de Campo (Técnico)
+                  </h4>
+                  <div className="bg-white border border-slate-100 p-4 rounded-xl text-xs text-slate-600 leading-relaxed italic shadow-sm">
+                    &quot;{selectedRecord.reason || "Nenhuma justificativa ou observação foi registrada para este atendimento na Coluna 3 da planilha."}&quot;
                   </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-200 text-slate-400 font-mono text-[9px] font-bold uppercase select-none bg-slate-50/50">
-                          <th className="py-2 px-3">Nome / Usuário</th>
-                          <th className="py-2 px-3">Senha</th>
-                          <th className="py-2 px-3">Nível</th>
-                          <th className="py-2 px-3">E-mail</th>
-                          <th className="py-2 px-3 text-right">Ações de Controle</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                        {registeredUsers.length === 0 ? (
-                          <tr>
-                            <td colSpan={5} className="py-8 text-center text-slate-400 font-medium">
-                              Nenhum usuário recuperado do servidor. Sincronizando...
-                            </td>
-                          </tr>
-                        ) : (
-                          registeredUsers.map((u, idx) => {
-                            const isMasterUser = u.username === "cristiano.kuhn";
-                            return (
-                              <tr key={idx} className="hover:bg-slate-50/40 transition duration-150">
-                                <td className="py-3 px-3">
-                                  <div className="font-semibold text-slate-900">{u.name}</div>
-                                  <div className="text-3xs text-slate-400 font-mono font-bold">@{u.username}</div>
-                                </td>
-                                <td className="py-3 px-3 font-mono text-indigo-700 font-bold select-all bg-indigo-50/20 rounded px-1.5 py-0.5">
-                                  {u.password}
-                                </td>
-                                <td className="py-3 px-3 whitespace-nowrap">
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                                    u.role === "Admin" ? "bg-purple-100 text-purple-700 border border-purple-200/50" :
-                                    u.role === "Gerente" ? "bg-cyan-50 text-cyan-700 border border-cyan-100" :
-                                    "bg-slate-100 text-slate-700 border border-slate-200/50"
-                                  }`}>
-                                    {u.role}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-3 font-mono text-slate-500 text-[11px] truncate max-w-[120px]" title={u.email}>
-                                  {u.email}
-                                </td>
-                                <td className="py-3 px-3 whitespace-nowrap text-right space-x-1">
-                                  {/* Email Requisition Trigger */}
-                                  <button
-                                    onClick={() => handleSendInviteEmail(u)}
-                                    className="inline-flex items-center gap-1 px-1.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-mono transition font-bold cursor-pointer"
-                                    title="Disparar e-mail de requisição com credenciais"
-                                  >
-                                    Convite ✉️
-                                  </button>
+                </div>
 
-                                  {/* Edit Button */}
-                                  <button
-                                    onClick={() => {
-                                      setEditingUsername(u.username);
-                                      setUserForm({
-                                        name: u.name,
-                                        username: u.username,
-                                        password: u.password,
-                                        email: u.email,
-                                        role: u.role
-                                      });
-                                    }}
-                                    className="inline-flex items-center gap-1 px-1.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-750 rounded text-[10px] font-mono transition font-bold cursor-pointer"
-                                    title="Editar perfil"
-                                  >
-                                    Editar
-                                  </button>
-
-                                  {/* Delete Button */}
-                                  <button
-                                    onClick={() => handleDeleteUser(u.username)}
-                                    disabled={isMasterUser}
-                                    className={`inline-flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-mono transition font-bold ${
-                                      isMasterUser 
-                                        ? "bg-slate-100 text-slate-300 cursor-not-allowed" 
-                                        : "bg-red-50 hover:bg-red-100 text-red-600 cursor-pointer"
-                                    }`}
-                                    title={isMasterUser ? "Administrador master não pode ser excluído" : "Deletar usuário"}
-                                  >
-                                    Deletar
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <div className="mt-8 flex justify-end">
+                  <button 
+                    onClick={() => setSelectedRecord(null)}
+                    className="px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition cursor-pointer shadow-lg shadow-slate-900/20"
+                  >
+                    Fechar Detalhes
+                  </button>
+                </div>
               </div>
 
             </div>
-
-            {/* SIMULATED EMAIL MODAL LOG */}
-            {simulatedEmail && (
-              <div className="bg-indigo-950/90 border border-indigo-800 rounded-2xl p-5 text-indigo-100 flex flex-col md:flex-row gap-5 items-start mt-6 shadow-xl relative animate-fade-in">
-                <button 
-                  onClick={() => setSimulatedEmail(null)}
-                  className="absolute top-4 right-4 text-indigo-300 hover:text-white font-bold cursor-pointer font-mono"
-                >
-                  Fechar [X]
-                </button>
-                <div className="w-12 h-12 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 flex items-center justify-center shrink-0 text-xl font-bold font-mono">
-                  ✉️
-                </div>
-                <div className="space-y-2 flex-1 font-sans">
-                  <h4 className="text-xs font-bold uppercase tracking-wider font-mono text-indigo-300">
-                    Log de Serviço Local — E-mail de credencial despachado com sucesso!
-                  </h4>
-                  <p className="text-[11px] leading-relaxed text-indigo-200">
-                    O servidor simula com sucesso o envio de um convite de segurança com as credenciais. Abaixo está a composição do e-mail que o usuário <b>{simulatedEmail.name}</b> recebeu:
-                  </p>
-                  
-                  <div className="bg-slate-950 p-4 rounded-xl border border-indigo-900/60 font-mono text-xs text-indigo-300 max-w-full overflow-x-auto whitespace-pre-wrap select-all">
-                    <b>Assunto:</b> Credenciais de Acesso — Auditoria de Operações-Campo<br/>
-                    <b>Destinatário:</b> {simulatedEmail.email} ({simulatedEmail.name})<br/>
-                    <b>Remetente Administrador:</b> {currentUser.name}<br/>
-                    <b>Data do Disparo:</b> {new Date(simulatedEmail.timestamp).toLocaleString("pt-BR")}<br/>
-                    ----------------------------------------------------------------------<br/><br/>
-                    {simulatedEmail.body}
-                  </div>
-                </div>
-              </div>
-            )}
-
           </div>
         )}
 
       </main>
 
-      {/* FOOTER METRICS SYSTEM INFO */}
-      <footer className="bg-[#0F172A] text-slate-400 border-t border-slate-800 py-6 text-center text-xs md:hidden">
-        <div className="px-4 flex flex-col items-center gap-3">
-          <div className="flex items-center space-x-2">
-            <span className="text-white font-bold font-display">Dashboard de Agendamentos</span>
-            <span className="text-slate-600">|</span>
-            <span>Métricas e Capex</span>
-          </div>
-          <span className="font-mono text-3xs text-slate-500">
-            Conexão Google Apps Script • AKfycbyt...
-          </span>
-        </div>
-      </footer>
-
-      {/* HIGH-QUALITY MODAL FOR OS AUDITING DETAILED VIEW */}
-      {selectedRecord && (
-        <div className="fixed inset-0 bg-[#0F172A]/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition duration-150 animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl relative">
-            
-            {/* Modal Header */}
-            <div className="bg-indigo-600 text-white p-5 shadow-md">
-              <span className="text-[9px] font-mono font-bold tracking-widest text-indigo-200 uppercase block">
-                AUDITORIA DE ORDEM DE SERVIÇO
-              </span>
-              <h3 className="text-md font-bold font-display text-white mt-1">
-                Cliente ID: {selectedRecord.client || "Não qualificado"}
-              </h3>
+      {/* GLOBAL LOADING OVERLAY */}
+      {loading && (
+        <div className="fixed inset-0 z-[200] bg-slate-900/20 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white p-6 rounded-3xl shadow-2xl border border-slate-200 flex flex-col items-center gap-4">
+            <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin" />
+            <div className="text-center">
+              <h4 className="text-sm font-bold text-slate-900">Sincronizando com Google Sheets</h4>
+              <p className="text-[10px] text-slate-400 font-mono mt-1 uppercase tracking-widest">Aguarde a validação da API...</p>
             </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-4 text-xs">
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="block text-[9px] font-bold font-mono text-slate-400 uppercase tracking-wider mb-0.5">
-                    📅 Data do Agendamento
-                  </span>
-                  <span className="text-slate-800 font-semibold">{selectedRecord.date}</span>
-                </div>
-                <div>
-                  <span className="block text-[9px] font-bold font-mono text-slate-400 uppercase tracking-wider mb-0.5">
-                    ⚙️ Área de OS
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-4xs font-bold uppercase tracking-wider ${
-                    selectedRecord.category === "Ativações" ? "bg-sky-50 text-sky-700" :
-                    selectedRecord.category === "Suporte" ? "bg-indigo-50 text-indigo-700" :
-                    selectedRecord.category === "Infraestrutura" ? "bg-emerald-50 text-emerald-700" :
-                    "bg-amber-50 text-amber-700"
-                  }`}>
-                    {selectedRecord.category}
-                  </span>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-100 pt-3">
-                <span className="block text-[9px] font-bold font-mono text-slate-400 uppercase tracking-wider mb-0.5">
-                  📄 Demanda Registrada (Coluna 4)
-                </span>
-                <span className="text-slate-900 font-semibold text-xs leading-relaxed block bg-slate-50 p-2.5 rounded-lg border border-slate-150">
-                  {selectedRecord.demand}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-3">
-                <div>
-                  <span className="block text-[9px] font-bold font-mono text-slate-400 uppercase tracking-wider mb-0.5">
-                    💡 Status OS (Coluna 2)
-                  </span>
-                  <span className="text-slate-800 font-semibold text-xs capitalize flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${
-                      isStatusCompleted(selectedRecord.status) ? "bg-emerald-500" :
-                      selectedRecord.status.toLowerCase().includes("reagendado") ? "bg-amber-500" : "bg-red-500"
-                    }`} />
-                    {selectedRecord.status}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[9px] font-bold font-mono text-slate-400 uppercase tracking-wider mb-0.5">
-                    🔧 Técnico de Campo (Coluna 6)
-                  </span>
-                  <span className="text-slate-800 font-semibold">{selectedRecord.technician || "Sem roteamento"}</span>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-100 pt-3">
-                <span className="block text-[9px] font-bold font-mono text-slate-400 uppercase tracking-wider mb-0.5">
-                  📝 Motivação Comercial / Justificativa (Coluna 5)
-                </span>
-                <span className="text-slate-900 block bg-slate-50 p-3 rounded-lg border border-slate-150 leading-normal">
-                  {selectedRecord.reason || <span className="italic text-slate-400 text-3xs">Técnico não reportou justificativa nessa execução.</span>}
-                </span>
-              </div>
-
-              <div className="border-t border-slate-100 pt-3 bg-slate-50 p-3 rounded-lg text-[10px] font-mono text-slate-400">
-                <span className="block font-bold uppercase text-slate-500">ESTRUTURA DE AUDITORIA:</span>
-                <span className="block max-h-[80px] overflow-y-auto mt-1 break-all scrollbar-thin">
-                  {JSON.stringify(selectedRecord.raw || selectedRecord)}
-                </span>
-              </div>
-
-            </div>
-
-            {/* Modal Actions */}
-            <div className="bg-slate-50 px-6 py-4 flex justify-end border-t border-slate-150">
-              <button
-                onClick={() => setSelectedRecord(null)}
-                className="px-4 py-2 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg cursor-pointer transition shadow-sm"
-              >
-                Concluir Inspeção
-              </button>
-            </div>
-
           </div>
         </div>
       )}
