@@ -8,6 +8,8 @@ export interface RawDemand {
   technician: string;
   city: string;
   category: "Infraestrutura" | "Suporte" | "Recolhimentos" | "Ativações";
+  nivel: "com_deslocamento" | "sem_deslocamento" | ""; // Nova coluna D
+  grupos: string; // Nova coluna E
   technicians?: string[]; // Array of technicians assigned to the protocol team
   isGroupedProtocol?: boolean; // Flag to indicate if it represents a grouped protocol
   // Support flexible raw structures as well
@@ -42,12 +44,17 @@ export interface RecolhimentoMetrics {
   retrievalEffectiveness: number; // effectiveRetrievals / totalAttempts
 }
 
-export interface DashboardFilters {
-  startDate: string;
-  endDate: string;
-  technician: string;
-  status: string;
-  category: string;
+// Novas interfaces para as métricas de Eficiência Operacional e Aderência
+export interface OperationalEfficiencyMetrics {
+  totalDemandsWithDisplacement: number;
+  completedDemandsWithDisplacement: number;
+  operationalEfficiency: number; // % de concluídas com deslocamento / total com deslocamento
+}
+
+export interface SchedulingAdherenceMetrics {
+  totalDemandsForAdherence: number; // Total de demandas elegíveis para aderência (com deslocamento, excluindo tipos específicos)
+  adherentDemands: number; // Demandas concluídas e com deslocamento, excluindo tipos específicos
+  schedulingAdherence: number; // % de aderentes / total elegível
 }
 
 export interface User {
