@@ -8,26 +8,21 @@ export interface RawDemand {
   technician: string;
   city: string;
   category: "Infraestrutura" | "Suporte" | "Recolhimentos" | "Ativações";
-  nivel: "com_deslocamento" | "sem_deslocamento" | ""; // Nova coluna D
-  grupos: string; // Nova coluna E
-  technicians?: string[]; // Array of technicians assigned to the protocol team
-  isGroupedProtocol?: boolean; // Flag to indicate if it represents a grouped protocol
-  // Support flexible raw structures as well
+  nivel: "com_deslocamento" | "sem_deslocamento" | "";
+  grupos: string;
+  technicians?: string[];
+  isGroupedProtocol?: boolean;
   raw?: any;
 }
 
 export interface GeneralMetrics {
   totalDemands: number;
   totalCompleted: number;
-  schedulingEfficiency: number; // concluídos / total
-  
-  // Categorized completed quantities
+  schedulingEfficiency: number;
   completedSuporte: number;
   completedAtivacoes: number;
   completedInfraestrutura: number;
   completedRecolhimentos: number;
-  
-  // Totals by category (concluded or not)
   totalSuporte: number;
   totalAtivacoes: number;
   totalInfraestrutura: number;
@@ -35,26 +30,33 @@ export interface GeneralMetrics {
 }
 
 export interface RecolhimentoMetrics {
-  totalAttempts: number; // total attempts of retrievals
-  effectiveRetrievals: number; // completed status within recolhimentos (cancelamento + recolhimento)
-  sentToBilling: number; // status 'não realizado' AND reason contain 'cobrança'
-  teamDidNotGo: number; // status 'reagendado' AND reason contain 'não foi'
-  clientAusente: number; // customer absent/not found
-  clientRefused: number; // customer refused to return or did not allow entry
-  retrievalEffectiveness: number; // effectiveRetrievals / totalAttempts
+  totalAttempts: number;
+  effectiveRetrievals: number;
+  sentToBilling: number;
+  teamDidNotGo: number;
+  clientAusente: number;
+  clientRefused: number;
+  retrievalEffectiveness: number;
 }
 
-// Novas interfaces para as métricas de Eficiência Operacional e Aderência
 export interface OperationalEfficiencyMetrics {
   totalDemandsWithDisplacement: number;
   completedDemandsWithDisplacement: number;
-  operationalEfficiency: number; // % de concluídas com deslocamento / total com deslocamento
+  operationalEfficiency: number;
 }
 
 export interface SchedulingAdherenceMetrics {
-  totalDemandsForAdherence: number; // Total de demandas elegíveis para aderência (com deslocamento, excluindo tipos específicos)
-  adherentDemands: number; // Demandas concluídas e com deslocamento, excluindo tipos específicos
-  schedulingAdherence: number; // % de aderentes / total elegível
+  totalDemandsForAdherence: number;
+  adherentDemands: number;
+  schedulingAdherence: number;
+}
+
+export interface DashboardFilters {
+  startDate: string;
+  endDate: string;
+  technician: string;
+  status: string;
+  category: string;
 }
 
 export interface User {
