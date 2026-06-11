@@ -1,13 +1,13 @@
 export interface RawDemand {
-  date: string;
-  status: string;
-  client: string;
   protocol_number: string;
-  demand: string;
+  status: string;
   reason: string;
+  demand: string;
   technician: string;
   city: string;
-  category: "Infraestrutura" | "Suporte" | "Recolhimentos" | "Ativações";
+  date: string;
+  category: string;
+  client: string;
   nivel: "com_deslocamento" | "sem_deslocamento" | "";
   grupos: string;
   technicians?: string[];
@@ -62,6 +62,28 @@ export interface DashboardFilters {
 export interface User {
   name: string;
   username: string;
+  password?: string;
   email: string;
-  role: string;
+  role: "Admin" | "Gerente" | "Colaborador";
 }
+
+export interface AuditRecord {
+  date: string;
+  protocol: string;
+  triedToConfirm: 'SIM' | 'NÃO' | '';
+  clientConfirmed: 'SIM' | 'NÃO' | '';
+  schedulingError: 'SIM' | 'NÃO' | '';
+  whoErrored: 'Adrieli' | 'Ariani' | 'Tatiane' | 'Graziela' | 'Victória' | 'Tayane' | 'Jéssica' | 'Stéfani' | 'Laís' | 'Tudo Certo' | '';
+  errorReason: 'Erro de Confirmação - Sem Retorno - Remoção da Agenda' |
+               'Erro de Confirmação - Contato desatualizado - Remoção da Agenda' |
+               'Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada' |
+               'Agendamento Ok - Cliente Reagendou' |
+               'Antecipado por ser "Externo"' |
+               'Erro de Confirmação - Chamado contato errado - Remoção da Agenda' |
+               'Não deu tempo - Reagendado pela equipe técnica' |
+               'Motivo - Chuva - Equipe deslocada' |
+               'Motivo - Chuva - Equipe não deslocada' | '';
+}
+
+export type AuditWhoErroredOptions = AuditRecord['whoErrored'];
+export type AuditErrorReasonOptions = AuditRecord['errorReason'];
