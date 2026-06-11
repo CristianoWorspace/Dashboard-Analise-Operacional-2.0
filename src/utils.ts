@@ -1,4 +1,4 @@
-import { RawDemand, GeneralMetrics, RecolhimentoMetrics, OperationalEfficiencyMetrics, SchedulingAdherenceMetrics } from "./types";
+import { RawDemand, GeneralMetrics, RecolhimentoMetrics, OperationalEfficiencyMetrics, SchedulingAdherenceMetrics, AuditRecord } from "./types";
 
 /**
  * Helper to determine if a status string represents a completed/concluded task.
@@ -185,23 +185,18 @@ export function groupDemandsByProtocol(demands: RawDemand[]): RawDemand[] {
     if (demand.protocol_number) {
       if (!grouped[demand.protocol_number]) {
         grouped[demand.protocol_number] = { ...demand, technicians: [demand.technician], isGroupedProtocol: true };
-      } else {
-        if (demand.technician && !grouped[demand.protocol_number].technicians?.includes(demand.technician)) {
-          grouped[demand.protocol_number].technicians?.push(demand.technician);
-        }
-        if (isStatusRescheduled(demand.status) && !isStatusRescheduled(grouped[demand.protocol_number].status)) {
-          grouped[demand.protocol_number].status = demand.status;
-        } else if (isStatusNotPerformed(demand.status) && !isStatusRescheduled(grouped[demand.protocol_number].status) && !isStatusNotPerformed(grouped[demand.protocol_number].status)) {
-          grouped[demand.protocol_number].status = demand.status;
-        }
       }
-    } else {
-      grouped[`no_protocol_${demands.indexOf(demand)}`] = demand;
+      if (demand.technician && !grouped[demand.protocol_number].technicians?.includes(demand.technician)) {
+        grouped[demand.protocol_number].technicians?.push(demand.technician);
+      }
+      // Prioritize 'Concluído' status for the grouped protocol
+      if (isStatusCompleted(demand.status)) {
+        grouped[demand.protocol_number].status = demand.status;
+      }
     }
   });
-
   return Object.values(grouped);
-}
+};
 
 /**
  * Calculates metrics for primary dashboard
@@ -309,4 +304,52 @@ export function calculateSchedulingAdherenceMetrics(demands: RawDemand[]): Sched
     adherentDemands: adherent,
     schedulingAdherence: adherence
   };
-}
+};
+
+export const filterAuditDemands = (demands: RawDemand[]): RawDemand[] => {
+  return demands.filter(demand => {
+    const s = demand.status.toLowerCase();
+    const isReagendado = s.includes("reagendado");
+    const isComDeslocamento = demand.nivel === "com_deslocamento";
+    const isRelevantReason = [
+      "cliente não estava",
+      "cliente solicitou reagenda",
+      "cliente solicitou reagendamento",
+      "não deu tempo - reagendado pela equipe técnica",
+      "motivo - chuva - equipe deslocada",
+      "motivo - chuva - equipe não deslocada"
+    ].some(reason => demand.reason.toLowerCase().includes(reason));
+
+    return isReagendado && isComDeslocamento && isRelevantReason;
+  });
+};
+
+export const calculateAuditIndicators = (auditRecords: AuditRecord[]) => {
+  let totalAudited = auditRecords.length;
+  let triedToConfirmYes = auditRecords.filter(r => r.triedToConfirm === 'SIM').length;
+  let clientConfirmedYes = auditRecords.filter(r => r.clientConfirmed === 'SIM').length;
+  let schedulingErrorYes = auditRecords.filter(r => r.schedulingError === 'SIM').length;
+
+  const whoErroredCounts: { [key: string]: number } = {};
+  auditRecords.forEach(r => {
+    if (r.whoErrored && r.whoErrored !== '') {
+      whoErroredCounts[r.whoErrored] = (whoErroredCounts[r.whoErrored] || 0) + 1;
+    }
+  });
+
+  const errorReasonCounts: { [key: string]: number } = {};
+  auditRecords.forEach(r => {
+    if (r.errorReason && r.errorReason !== '') {
+      errorReasonCounts[r.errorReason] = (errorReasonCounts[r.errorReason] || 0) + 1;
+    }
+  });
+
+  return {
+    totalAudited,
+    triedToConfirmYes,
+    clientConfirmedYes,
+    schedulingErrorYes,
+    whoErroredCounts,
+    errorReasonCounts,
+  };
+};
