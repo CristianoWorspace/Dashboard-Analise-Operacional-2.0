@@ -10,19 +10,7 @@ type AppUser = {
   role: string;
 };
 
-const DEFAULT_USERS: AppUser[] = [
-  {
-    name: "Cristiano Rafael Kuhn",
-    username: "cristiano.kuhn",
-    password: "9784Pqa@",
-    email: "cristianokuhn7@gmail.com",
-    role: "Admin"
-  }
-];
-
-const SHEET_URL =
-  process.env.GOOGLE_APPS_SCRIPT_URL ||
-  "https://script.google.com/macros/s/AKfycbyt9oKLdVTEoBlFW9NThj7usEkYYzRbDJZOY_DY9cnnrxT-L-ZrWJj8UuSuBf4BgTBKdQ/exec";
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
 
 function normalizeUser(raw: any): AppUser | null {
   if (!raw || typeof raw !== "object") return null;
@@ -47,7 +35,7 @@ function assertUserPayload(body: any) {
 }
 
 async function callSheet(action: string, payload?: Record<string, any>) {
-  const url = `${SHEET_URL}?action=${encodeURIComponent(action)}`;
+  const url = `${APPS_SCRIPT_URL}?action=${encodeURIComponent(action)}`;
   const response = await fetch(url, {
     method: payload ? "POST" : "GET",
     headers: payload ? { "Content-Type": "application/json" } : undefined,
@@ -84,7 +72,7 @@ async function getUsersFromSheet() {
     );
   }
 
-  return users.length > 0 ? users : DEFAULT_USERS;
+  return users;
 }
 
 export default async function handler(req: any, res: any) {
@@ -136,9 +124,7 @@ export default async function handler(req: any, res: any) {
       if (!username) {
         return res.status(400).json({ success: false, message: "Usuário não informado para exclusão." });
       }
-      if (username === "cristiano.kuhn") {
-        return res.status(400).json({ success: false, message: "O administrador master não pode ser excluído." });
-      }
+
 
       const result = await callSheet("deleteUser", { username });
       if (result.success === false) {
@@ -153,7 +139,7 @@ export default async function handler(req: any, res: any) {
     console.error("[api/users]", e);
     return res.status(500).json({
       success: false,
-      message: e?.message || "Erro ao comunicar com a planilha de usuários.",
+      message: e?.message || "Erro ao comunicar com a planilha de usuários. Verifique o Apps Script."
       error: String(e)
     });
   }
