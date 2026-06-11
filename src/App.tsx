@@ -74,7 +74,7 @@ import {
 
 export default function App() {
   // User authentication states
-  const [activeTab, setActiveTab] = useState<"geral" | "recolhimentos" | "eficiencia" | "motivos" | "usuarios">("geral");
+    const [activeTab, setActiveTab] = useState<"geral" | "recolhimentos" | "eficiencia" | "motivos" | "usuarios" | "auditoria">("geral");
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem("dashboard_user");
     if (saved) {
@@ -297,6 +297,90 @@ const handleLogin = async (e: React.FormEvent) => {
   const [submittingUser, setSubmittingUser] = useState<boolean>(false);
   const [fetchingUsers, setFetchingUsers] = useState<boolean>(false);
   const [simulatedEmail, setSimulatedEmail] = useState<any | null>(null);
+
+  // Audit states
+  const [auditDemands, setAuditDemands] = useState<RawDemand[]>([]);
+  const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
+  const [fetchingAuditRecords, setFetchingAuditRecords] = useState<boolean>(false);
+  const [submittingAuditRecord, setSubmittingAuditRecord] = useState<boolean>(false);
+  const [auditError, setAuditError] = useState<string>("");
+  const [auditSuccess, setAuditSuccess] = useState<string>("");
+  const [selectedAuditDemand, setSelectedAuditDemand] = useState<RawDemand | null>(null);
+  const [auditForm, setAuditForm] = useState<AuditRecord>({
+    date: "",
+    protocol: "",
+    triedToConfirm: "",
+    clientConfirmed: "",
+    schedulingError: "",
+    whoErrored: "",
+    errorReason: "",
+  });
+
+  const fetchAuditRecords = async () => {
+    setFetchingAuditRecords(true);
+    try {
+      const response = await fetch("/api/audit");
+      const result = await response.json();
+      if (result.success) {
+        setAuditRecords(result.records || []);
+      } else {
+        setAuditError(result.message || "Erro ao carregar registros de auditoria.");
+      }
+    } catch (err) {
+      console.error("Failed to fetch audit records:", err);
+      setAuditError("Erro de comunicação ao carregar auditorias.");
+    } finally {
+      setFetchingAuditRecords(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "auditoria") {
+      fetchAuditRecords();
+    }
+  }, [activeTab]);
+
+  const handleAuditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setAuditForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveAuditRecord = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmittingAuditRecord(true);
+    setAuditError("");
+    setAuditSuccess("");
+
+    try {
+      const response = await fetch("/api/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(auditForm),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setAuditSuccess("Registro de auditoria salvo com sucesso!");
+        setAuditForm({
+          date: "",
+          protocol: "",
+          triedToConfirm: "",
+          clientConfirmed: "",
+          schedulingError: "",
+          whoErrored: "",
+          errorReason: "",
+        });
+        setSelectedAuditDemand(null);
+        fetchAuditRecords();
+      } else {
+        setAuditError(result.message || "Erro ao salvar registro de auditoria.");
+      }
+    } catch (err) {
+      console.error("Failed to save audit record:", err);
+      setAuditError("Erro de comunicação ao salvar auditoria.");
+    } finally {
+      setSubmittingAuditRecord(false);
+    }
+  };
   
   // UI States
   const [selectedRecord, setSelectedRecord] = useState<RawDemand | null>(null);
@@ -459,6 +543,101 @@ const handleLogin = async (e: React.FormEvent) => {
 
   // Filter demands dynamically based on filter and search query state
   const filteredDemands = useMemo(() => {
+    return baseDemands.filter(item => {
+      // 1. Search Query (Client, technician, demand, reason, city or protocol matching)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesClient = (item.client || "").toLowerCase().includes(query);
+        const matchesTech = (item.technician || "").toLowerCase().includes(query);
+        const matchesDemand = (item.demand || "").toLowerCase().includes(query);
+        const matchesReason = (item.reason || "").toLowerCase().includes(query);
+        const matchesCity = (item.city || "").toLowerCase().includes(query);
+        const matchesProtocol = (item.protocol_number || "").toLowerCase().includes(query);
+        if (!matchesClient && !matchesTech && !matchesDemand && !matchesReason && !matchesCity && !matchesProtocol) {
+          return false;
+        }
+      }
+
+      // 2. Category Filter
+      if (filters.category !== "all" && item.category !== filters.category) {
+        return false;
+      }
+
+      // 3. Status Filter (normalizes 'concluido' variations)
+      if (filters.status !== "all") {
+        const s = item.status.toLowerCase();
+        const filterVal = filters.status.toLowerCase();
+        
+        if (filterVal === "concluido") {
+          if (!isStatusCompleted(item.status)) return false;
+        } else if (filterVal === "não realizado") {
+          if (!s.includes("não realizado") && !s.includes("nao realizado") && !s.includes("não realizada") && !s.includes("nao realizada")) return false;
+        } else if (filterVal === "reagendado") {
+          if (!s.includes("reagendado")) return false;
+        } else if (filterVal === "pendente") {
+          if (!s.includes("pendente")) return false;
+        }
+      }
+
+      // 4. Technician Filter
+      if (filters.technician !== "all") {
+        if (item.technicians) {
+          if (!item.technicians.includes(filters.technician)) return false;
+        } else if (item.technician !== filters.technician) {
+          return false;
+        }
+      }
+
+      // 5. Date Period Filter (Robust parsing of various date styles)
+      if (filters.startDate || filters.endDate) {
+        const itemDate = parseDate(item.date);
+        if (itemDate) {
+          if (filters.startDate) {
+            const start = new Date(filters.startDate);
+            start.setHours(0, 0, 0, 0);
+            if (itemDate < start) return false;
+          }
+          if (filters.endDate) {
+            const end = new Date(filters.endDate);
+            end.setHours(23, 59, 59, 999);
+            if (itemDate > end) return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [baseDemands, filters, searchQuery]);
+
+  const auditDemands = useMemo(() => {
+    if (activeTab !== "auditoria") return [];
+    return filteredDemands.filter(demand => {
+      const statusLower = demand.status.toLowerCase();
+      const nivelLower = demand.nivel?.toLowerCase() || "";
+      const motivoLower = demand.reason?.toLowerCase() || "";
+
+      const isReagendado = statusLower.includes("reagendado");
+      const hasDeslocamento = nivelLower.includes("com_deslocamento");
+
+      const motivosElegiveis = [
+        "cliente não estava",
+        "cliente solicitou reagenda",
+        "erro de confirmação - sem retorno - remoção da agenda",
+        "erro de confirmação - contato desatualizado - remoção da agenda",
+        "erro de confirmação - sem retorno - remoção da agenda - equipe foi deslocada",
+        "agendamento ok - cliente reagendou",
+        "antecipado por ser externo",
+        "erro de confirmação - chamado contato errado - remoção da agenda",
+        "não deu tempo - reagendado pela equipe técnica",
+        "motivo - chuva - equipe deslocada",
+        "motivo - chuva - equipe não deslocada",
+      ];
+
+      const matchesMotivo = motivosElegiveis.some(motivo => motivoLower.includes(motivo));
+
+      return isReagendado && hasDeslocamento && matchesMotivo;
+    });
+  }, [filteredDemands, activeTab]);
     return baseDemands.filter(item => {
       // 1. Search Query (Client, technician, demand, reason, city or protocol matching)
       if (searchQuery) {
@@ -832,19 +1011,34 @@ const handleLogin = async (e: React.FormEvent) => {
           </button>
 
           {currentUser?.role === "Admin" && (
+          <button
+            onClick={() => setActiveTab("usuarios")}
+            className={`p-3 rounded-xl transition duration-200 cursor-pointer flex flex-col items-center gap-1 group ${
+              activeTab === "usuarios"
+                ? "text-indigo-400 bg-white/10 ring-1 ring-white/10"
+                : "text-slate-400 hover:text-white hover:bg-white/5"
+            }`}
+            title="Gerenciar Usuários"
+          >
+            <Users className="w-5 h-5" />
+            <span className="text-[9px] font-mono hidden md:block">Usuários</span>
+          </button>
+
+          {currentUser?.role === "Admin" && (
             <button
-              onClick={() => { setActiveTab("usuarios"); }}
+              onClick={() => setActiveTab("auditoria")}
               className={`p-3 rounded-xl transition duration-200 cursor-pointer flex flex-col items-center gap-1 group ${
-                activeTab === "usuarios"
+                activeTab === "auditoria"
                   ? "text-indigo-400 bg-white/10 ring-1 ring-white/10"
                   : "text-slate-400 hover:text-white hover:bg-white/5"
               }`}
-              title="Gerenciamento de Usuários"
+              title="Auditoria de Reagendamentos"
             >
-              <Users className="w-5 h-5" />
-              <span className="text-[9px] font-mono hidden md:block">Usuários</span>
+              <Search className="w-5 h-5" />
+              <span className="text-[9px] font-mono hidden md:block">Auditoria</span>
             </button>
-          )}
+          )
+
         </nav>
 
         {/* Technical Profile Footer in Sidebar */}
@@ -1495,7 +1689,7 @@ const handleLogin = async (e: React.FormEvent) => {
                 </div>
 
                 <div className="text-[10px] text-slate-400 font-mono text-center pt-2 border-t border-slate-100 mt-4">
-                  Meta Empresarial de Perda de Capex: < 15%
+                  Meta Empresarial de Perda de Capex: &lt; 15%
                 </div>
               </div>
 
@@ -1846,7 +2040,763 @@ const handleLogin = async (e: React.FormEvent) => {
           </div>
         )}
 
+        {/* BENTO GRID: VIEW 5 - GERENCIAMENTO DE USUÁRIOS */}
+        {!loading && activeTab === "usuarios" && currentUser?.role === "Admin" && (
+          <div className="space-y-6">
+            {/* Conteúdo da aba de Usuários */}
+          </div>
+        )}
+
+        {/* BENTO GRID: VIEW 6 - AUDITORIA DE REAGENDAMENTOS */}
+        {!loading && activeTab === "auditoria" && currentUser?.role === "Admin" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight font-display">Auditoria de Reagendamentos</h2>
+            <p className="text-sm text-slate-500">Analise e audite atividades reagendadas com deslocamento para identificar padrões e responsabilidades.</p>
+
+            {auditError && (
+              <div className="mb-5 p-3 rounded-xl bg-rose-550/10 border border-rose-500/20 flex gap-2 text-rose-300 text-xs items-start leading-relaxed">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-450" />
+                <span>{auditError}</span>
+              </div>
+            )}
+            {auditSuccess && (
+              <div className="mb-5 p-3 rounded-xl bg-emerald-550/10 border border-emerald-500/20 flex gap-2 text-emerald-300 text-xs items-start leading-relaxed">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-450" />
+                <span>{auditSuccess}</span>
+              </div>
+            )}
+
+            {/* Filtros para Auditoria */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-md font-bold text-slate-700 mb-4">Demandas para Auditoria</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Status</label>
+                  <select
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                    value={filters.status}
+                    onChange={(e) => setFilters(p => ({ ...p, status: e.target.value }))}
+                  >
+                    <option value="reagendado">Reagendado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Nível de Deslocamento</label>
+                  <select
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                    value={filters.displacementLevel}
+                    onChange={(e) => setFilters(p => ({ ...p, displacementLevel: e.target.value }))}
+                  >
+                    <option value="com_deslocamento">Com Deslocamento</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-4">
+                <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Motivo (Col C)</label>
+                <select
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:focus:border-indigo-400 transition cursor-pointer"
+                  value={filters.reason}
+                  onChange={(e) => setFilters(p => ({ ...p, reason: e.target.value }))}
+                >
+                  <option value="all">Todos os Motivos</option>
+                  <option value="Cliente não estava">Cliente não estava</option>
+                  <option value="Cliente solicitou Reagenda">Cliente solicitou Reagenda</option>
+                  <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda">Erro de Confirmação - Sem Retorno - Remoção da Agenda</option>
+                  <option value="Erro de Confirmação - Contato desatualizado - Remoção da Agenda">Erro de Confirmação - Contato desatualizado - Remoção da Agenda</option>
+                  <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada">Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada</option>
+                  <option value="Agendamento Ok - Cliente Reagendou">Agendamento Ok - Cliente Reagendou</option>
+                  <option value="Antecipado por ser Externo">Antecipado por ser Externo</option>
+                  <option value="Erro de Confirmação - Chamado contato errado - Remoção da Agenda">Erro de Confirmação - Chamado contato errado - Remoção da Agenda</option>
+                  <option value="Não deu tempo - Reagendado pela equipe técnica">Não deu tempo - Reagendado pela equipe técnica</option>
+                  <option value="Motivo - Chuva - Equipe deslocada">Motivo - Chuva - Equipe deslocada</option>
+                  <option value="Motivo - Chuva - Equipe não deslocada">Motivo - Chuva - Equipe não deslocada</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tabela de Demandas para Auditoria */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-md font-bold text-slate-700 mb-4">Protocolos Filtrados ({auditDemands.length})</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Protocolo</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Motivo</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {auditDemands.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-center">Nenhuma demanda encontrada para auditoria com os filtros selecionados.</td>
+                      </tr>
+                    ) : (
+                      auditDemands.map((demand, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{demand.date}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.protocol_number}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.status}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.reason}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => {
+                                setSelectedAuditDemand(demand);
+                                setAuditForm({
+                                  date: demand.date,
+                                  protocol: demand.protocol_number,
+                                  triedToConfirm: "",
+                                  clientConfirmed: "",
+                                  schedulingError: "",
+                                  whoErrored: "",
+                                  errorReason: "",
+                                });
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900 text-xs font-semibold"
+                            >
+                              Auditar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Formulário de Auditoria */}
+            {selectedAuditDemand && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 className="text-md font-bold text-slate-700 mb-4">Auditar Protocolo: {selectedAuditDemand.protocol_number}</h3>
+                <form onSubmit={handleSaveAuditRecord} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Tentamos Confirmar?</label>
+                    <select
+                      name="triedToConfirm"
+                      value={auditForm.triedToConfirm}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Cliente Havia Confirmado?</label>
+                    <select
+                      name="clientConfirmed"
+                      value={auditForm.clientConfirmed}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Agendamento Errou?</label>
+                    <select
+                      name="schedulingError"
+                      value={auditForm.schedulingError}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Quem Errou?</label>
+                    <select
+                      name="whoErrored"
+                      value={auditForm.whoErrored}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="Adrieli">Adrieli</option>
+                      <option value="Ariani">Ariani</option>
+                      <option value="Tatiane">Tatiane</option>
+                      <option value="Graziela">Graziela</option>
+                      <option value="Victória">Victória</option>
+                      <option value="Tayane">Tayane</option>
+                      <option value="Jéssica">Jéssica</option>
+                      <option value="Stéfani">Stéfani</option>
+                      <option value="Laís">Laís</option>
+                      <option value="Tudo Certo">Tudo Certo</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Motivo do Erro</label>
+                    <select
+                      name="errorReason"
+                      value={auditForm.errorReason}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda">Erro de Confirmação - Sem Retorno - Remoção da Agenda</option>
+                      <option value="Erro de Confirmação - Contato desatualizado - Remoção da Agenda">Erro de Confirmação - Contato desatualizado - Remoção da Agenda</option>
+                      <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada">Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada</option>
+                      <option value="Agendamento Ok - Cliente Reagendou">Agendamento Ok - Cliente Reagendou</option>
+                      <option value="Antecipado por ser Externo">Antecipado por ser Externo</option>
+                      <option value="Erro de Confirmação - Chamado contato errado - Remoção da Agenda">Erro de Confirmação - Chamado contato errado - Remoção da Agenda</option>
+                      <option value="Não deu tempo - Reagendado pela equipe técnica">Não deu tempo - Reagendado pela equipe técnica</option>
+                      <option value="Motivo - Chuva - Equipe deslocada">Motivo - Chuva - Equipe deslocada</option>
+                      <option value="Motivo - Chuva - Equipe não deslocada">Motivo - Chuva - Equipe não deslocada</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={submittingAuditRecord}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition duration-200 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2 shadow-lg shadow-indigo-600/20"
+                    >
+                      {submittingAuditRecord ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Salvando...</span>
+                        </>
+                      ) : (
+                        <span>Salvar Auditoria</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Indicadores de Auditoria */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-md font-bold text-slate-700 mb-4">Indicadores de Auditoria</h3>
+              {auditRecords.length === 0 ? (
+                <p className="text-sm text-slate-500">Nenhum registro de auditoria para exibir indicadores.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Exemplo de Indicador: % de Reagendamentos Confirmados */}
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <p className="text-xs font-bold text-slate-500">% Confirmados</p>
+                    <p className="text-2xl font-black text-indigo-600">{((auditRecords.filter(r => r.triedToConfirm === "SIM").length / auditRecords.length) * 100 || 0).toFixed(1)}%</p>
+                  </div>
+                  {/* Adicionar mais indicadores aqui */}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* HIGH CONTRAST DETAILED RECORDS MATRIX TABLE */}
+
+        {/* BENTO GRID: VIEW 6 - AUDITORIA DE REAGENDAMENTOS */}
+        {!loading && activeTab === "auditoria" && currentUser?.role === "Admin" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight font-display">Auditoria de Reagendamentos</h2>
+            <p className="text-sm text-slate-500">Analise e audite atividades reagendadas com deslocamento para identificar padrões e responsabilidades.</p>
+
+            {auditError && (
+              <div className="mb-5 p-3 rounded-xl bg-rose-550/10 border border-rose-500/20 flex gap-2 text-rose-300 text-xs items-start leading-relaxed">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-450" />
+                <span>{auditError}</span>
+              </div>
+            )}
+            {auditSuccess && (
+              <div className="mb-5 p-3 rounded-xl bg-emerald-550/10 border border-emerald-500/20 flex gap-2 text-emerald-300 text-xs items-start leading-relaxed">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-450" />
+                <span>{auditSuccess}</span>
+              </div>
+            )}
+
+            {/* Filtros para Auditoria */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-md font-bold text-slate-700 mb-4">Demandas para Auditoria</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Status</label>
+                  <select
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                    value={filters.status}
+                    onChange={(e) => setFilters(p => ({ ...p, status: e.target.value }))}
+                  >
+                    <option value="reagendado">Reagendado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Nível de Deslocamento</label>
+                  <select
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                    value={filters.displacementLevel}
+                    onChange={(e) => setFilters(p => ({ ...p, displacementLevel: e.target.value }))}
+                  >
+                    <option value="com_deslocamento">Com Deslocamento</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-4">
+                <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Motivo (Col C)</label>
+                <select
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:focus:border-indigo-400 transition cursor-pointer"
+                  value={filters.reason}
+                  onChange={(e) => setFilters(p => ({ ...p, reason: e.target.value }))}
+                >
+                  <option value="all">Todos os Motivos</option>
+                  <option value="Cliente não estava">Cliente não estava</option>
+                  <option value="Cliente solicitou Reagenda">Cliente solicitou Reagenda</option>
+                  <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda">Erro de Confirmação - Sem Retorno - Remoção da Agenda</option>
+                  <option value="Erro de Confirmação - Contato desatualizado - Remoção da Agenda">Erro de Confirmação - Contato desatualizado - Remoção da Agenda</option>
+                  <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada">Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada</option>
+                  <option value="Agendamento Ok - Cliente Reagendou">Agendamento Ok - Cliente Reagendou</option>
+                  <option value="Antecipado por ser Externo">Antecipado por ser Externo</option>
+                  <option value="Erro de Confirmação - Chamado contato errado - Remoção da Agenda">Erro de Confirmação - Chamado contato errado - Remoção da Agenda</option>
+                  <option value="Não deu tempo - Reagendado pela equipe técnica">Não deu tempo - Reagendado pela equipe técnica</option>
+                  <option value="Motivo - Chuva - Equipe deslocada">Motivo - Chuva - Equipe deslocada</option>
+                  <option value="Motivo - Chuva - Equipe não deslocada">Motivo - Chuva - Equipe não deslocada</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tabela de Demandas para Auditoria */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-md font-bold text-slate-700 mb-4">Protocolos Filtrados ({auditDemands.length})</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Protocolo</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Motivo</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {auditDemands.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-center">Nenhuma demanda encontrada para auditoria com os filtros selecionados.</td>
+                      </tr>
+                    ) : (
+                      auditDemands.map((demand, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{demand.date}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.protocol_number}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.status}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.reason}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => {
+                                setSelectedAuditDemand(demand);
+                                setAuditForm({
+                                  date: demand.date,
+                                  protocol: demand.protocol_number,
+                                  triedToConfirm: "",
+                                  clientConfirmed: "",
+                                  schedulingError: "",
+                                  whoErrored: "",
+                                  errorReason: "",
+                                });
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900 text-xs font-semibold"
+                            >
+                              Auditar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Formulário de Auditoria */}
+            {selectedAuditDemand && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 className="text-md font-bold text-slate-700 mb-4">Auditar Protocolo: {selectedAuditDemand.protocol_number}</h3>
+                <form onSubmit={handleSaveAuditRecord} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Tentamos Confirmar?</label>
+                    <select
+                      name="triedToConfirm"
+                      value={auditForm.triedToConfirm}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Cliente Havia Confirmado?</label>
+                    <select
+                      name="clientConfirmed"
+                      value={auditForm.clientConfirmed}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Agendamento Errou?</label>
+                    <select
+                      name="schedulingError"
+                      value={auditForm.schedulingError}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Quem Errou?</label>
+                    <select
+                      name="whoErrored"
+                      value={auditForm.whoErrored}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="Adrieli">Adrieli</option>
+                      <option value="Ariani">Ariani</option>
+                      <option value="Tatiane">Tatiane</option>
+                      <option value="Graziela">Graziela</option>
+                      <option value="Victória">Victória</option>
+                      <option value="Tayane">Tayane</option>
+                      <option value="Jéssica">Jéssica</option>
+                      <option value="Stéfani">Stéfani</option>
+                      <option value="Laís">Laís</option>
+                      <option value="Tudo Certo">Tudo Certo</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Motivo do Erro</label>
+                    <select
+                      name="errorReason"
+                      value={auditForm.errorReason}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda">Erro de Confirmação - Sem Retorno - Remoção da Agenda</option>
+                      <option value="Erro de Confirmação - Contato desatualizado - Remoção da Agenda">Erro de Confirmação - Contato desatualizado - Remoção da Agenda</option>
+                      <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada">Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada</option>
+                      <option value="Agendamento Ok - Cliente Reagendou">Agendamento Ok - Cliente Reagendou</option>
+                      <option value="Antecipado por ser Externo">Antecipado por ser Externo</option>
+                      <option value="Erro de Confirmação - Chamado contato errado - Remoção da Agenda">Erro de Confirmação - Chamado contato errado - Remoção da Agenda</option>
+                      <option value="Não deu tempo - Reagendado pela equipe técnica">Não deu tempo - Reagendado pela equipe técnica</option>
+                      <option value="Motivo - Chuva - Equipe deslocada">Motivo - Chuva - Equipe deslocada</option>
+                      <option value="Motivo - Chuva - Equipe não deslocada">Motivo - Chuva - Equipe não deslocada</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={submittingAuditRecord}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition duration-200 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2 shadow-lg shadow-indigo-600/20"
+                    >
+                      {submittingAuditRecord ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Salvando...</span>
+                        </>
+                      ) : (
+                        <span>Salvar Auditoria</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Indicadores de Auditoria */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-md font-bold text-slate-700 mb-4">Indicadores de Auditoria</h3>
+              {auditRecords.length === 0 ? (
+                <p className="text-sm text-slate-500">Nenhum registro de auditoria para exibir indicadores.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Exemplo de Indicador: % de Reagendamentos Confirmados */}
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <p className="text-xs font-bold text-slate-500">% Confirmados</p>
+                    <p className="text-2xl font-black text-indigo-600">{((auditRecords.filter(r => r.triedToConfirm === "SIM").length / auditRecords.length) * 100 || 0).toFixed(1)}%</p>
+                  </div>
+                  {/* Adicionar mais indicadores aqui */}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* HIGH CONTRAST DETAILED RECORDS MATRIX TABLE */}
+
+        {/* BENTO GRID: VIEW 6 - AUDITORIA DE REAGENDAMENTOS */}
+        {!loading && activeTab === "auditoria" && currentUser?.role === "Admin" && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight font-display">Auditoria de Reagendamentos</h2>
+            <p className="text-sm text-slate-500">Analise e audite atividades reagendadas com deslocamento para identificar padrões e responsabilidades.</p>
+
+            {auditError && (
+              <div className="mb-5 p-3 rounded-xl bg-rose-550/10 border border-rose-500/20 flex gap-2 text-rose-300 text-xs items-start leading-relaxed">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-450" />
+                <span>{auditError}</span>
+              </div>
+            )}
+            {auditSuccess && (
+              <div className="mb-5 p-3 rounded-xl bg-emerald-550/10 border border-emerald-500/20 flex gap-2 text-emerald-300 text-xs items-start leading-relaxed">
+                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-450" />
+                <span>{auditSuccess}</span>
+              </div>
+            )}
+
+            {/* Filtros para Auditoria */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-md font-bold text-slate-700 mb-4">Demandas para Auditoria</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Status</label>
+                  <select
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                    value={filters.status}
+                    onChange={(e) => setFilters(p => ({ ...p, status: e.target.value }))}
+                  >
+                    <option value="reagendado">Reagendado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Nível de Deslocamento</label>
+                  <select
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                    value={filters.displacementLevel}
+                    onChange={(e) => setFilters(p => ({ ...p, displacementLevel: e.target.value }))}
+                  >
+                    <option value="com_deslocamento">Com Deslocamento</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-4">
+                <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Motivo (Col C)</label>
+                <select
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:focus:border-indigo-400 transition cursor-pointer"
+                  value={filters.reason}
+                  onChange={(e) => setFilters(p => ({ ...p, reason: e.target.value }))}
+                >
+                  <option value="all">Todos os Motivos</option>
+                  <option value="Cliente não estava">Cliente não estava</option>
+                  <option value="Cliente solicitou Reagenda">Cliente solicitou Reagenda</option>
+                  <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda">Erro de Confirmação - Sem Retorno - Remoção da Agenda</option>
+                  <option value="Erro de Confirmação - Contato desatualizado - Remoção da Agenda">Erro de Confirmação - Contato desatualizado - Remoção da Agenda</option>
+                  <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada">Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada</option>
+                  <option value="Agendamento Ok - Cliente Reagendou">Agendamento Ok - Cliente Reagendou</option>
+                  <option value="Antecipado por ser Externo">Antecipado por ser Externo</option>
+                  <option value="Erro de Confirmação - Chamado contato errado - Remoção da Agenda">Erro de Confirmação - Chamado contato errado - Remoção da Agenda</option>
+                  <option value="Não deu tempo - Reagendado pela equipe técnica">Não deu tempo - Reagendado pela equipe técnica</option>
+                  <option value="Motivo - Chuva - Equipe deslocada">Motivo - Chuva - Equipe deslocada</option>
+                  <option value="Motivo - Chuva - Equipe não deslocada">Motivo - Chuva - Equipe não deslocada</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Tabela de Demandas para Auditoria */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-md font-bold text-slate-700 mb-4">Protocolos Filtrados ({auditDemands.length})</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Data</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Protocolo</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Motivo</th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {auditDemands.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-center">Nenhuma demanda encontrada para auditoria com os filtros selecionados.</td>
+                      </tr>
+                    ) : (
+                      auditDemands.map((demand, index) => (
+                        <tr key={index}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{demand.date}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.protocol_number}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.status}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.reason}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => {
+                                setSelectedAuditDemand(demand);
+                                setAuditForm({
+                                  date: demand.date,
+                                  protocol: demand.protocol_number,
+                                  triedToConfirm: "",
+                                  clientConfirmed: "",
+                                  schedulingError: "",
+                                  whoErrored: "",
+                                  errorReason: "",
+                                });
+                              }}
+                              className="text-indigo-600 hover:text-indigo-900 text-xs font-semibold"
+                            >
+                              Auditar
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Formulário de Auditoria */}
+            {selectedAuditDemand && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <h3 className="text-md font-bold text-slate-700 mb-4">Auditar Protocolo: {selectedAuditDemand.protocol_number}</h3>
+                <form onSubmit={handleSaveAuditRecord} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Tentamos Confirmar?</label>
+                    <select
+                      name="triedToConfirm"
+                      value={auditForm.triedToConfirm}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Cliente Havia Confirmado?</label>
+                    <select
+                      name="clientConfirmed"
+                      value={auditForm.clientConfirmed}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Agendamento Errou?</label>
+                    <select
+                      name="schedulingError"
+                      value={auditForm.schedulingError}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="SIM">SIM</option>
+                      <option value="NÃO">NÃO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Quem Errou?</label>
+                    <select
+                      name="whoErrored"
+                      value={auditForm.whoErrored}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="Adrieli">Adrieli</option>
+                      <option value="Ariani">Ariani</option>
+                      <option value="Tatiane">Tatiane</option>
+                      <option value="Graziela">Graziela</option>
+                      <option value="Victória">Victória</option>
+                      <option value="Tayane">Tayane</option>
+                      <option value="Jéssica">Jéssica</option>
+                      <option value="Stéfani">Stéfani</option>
+                      <option value="Laís">Laís</option>
+                      <option value="Tudo Certo">Tudo Certo</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Motivo do Erro</label>
+                    <select
+                      name="errorReason"
+                      value={auditForm.errorReason}
+                      onChange={handleAuditFormChange}
+                      className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                      required
+                    >
+                      <option value="">Selecione</option>
+                      <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda">Erro de Confirmação - Sem Retorno - Remoção da Agenda</option>
+                      <option value="Erro de Confirmação - Contato desatualizado - Remoção da Agenda">Erro de Confirmação - Contato desatualizado - Remoção da Agenda</option>
+                      <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada">Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada</option>
+                      <option value="Agendamento Ok - Cliente Reagendou">Agendamento Ok - Cliente Reagendou</option>
+                      <option value="Antecipado por ser Externo">Antecipado por ser Externo</option>
+                      <option value="Erro de Confirmação - Chamado contato errado - Remoção da Agenda">Erro de Confirmação - Chamado contato errado - Remoção da Agenda</option>
+                      <option value="Não deu tempo - Reagendado pela equipe técnica">Não deu tempo - Reagendado pela equipe técnica</option>
+                      <option value="Motivo - Chuva - Equipe deslocada">Motivo - Chuva - Equipe deslocada</option>
+                      <option value="Motivo - Chuva - Equipe não deslocada">Motivo - Chuva - Equipe não deslocada</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2 flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={submittingAuditRecord}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition duration-200 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 mt-2 shadow-lg shadow-indigo-600/20"
+                    >
+                      {submittingAuditRecord ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          <span>Salvando...</span>
+                        </>
+                      ) : (
+                        <span>Salvar Auditoria</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Indicadores de Auditoria */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-md font-bold text-slate-700 mb-4">Indicadores de Auditoria</h3>
+              {auditRecords.length === 0 ? (
+                <p className="text-sm text-slate-500">Nenhum registro de auditoria para exibir indicadores.</p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Exemplo de Indicador: % de Reagendamentos Confirmados */}
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <p className="text-xs font-bold text-slate-500">% Confirmados</p>
+                    <p className="text-2xl font-black text-indigo-600">{((auditRecords.filter(r => r.triedToConfirm === "SIM").length / auditRecords.length) * 100 || 0).toFixed(1)}%</p>
+                  </div>
+                  {/* Adicionar mais indicadores aqui */}
+                </div>
+              )}
+            </div>
+          </div>
+        )
         {activeTab !== "usuarios" && (
           <div className="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           
