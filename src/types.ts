@@ -57,6 +57,8 @@ export interface DashboardFilters {
   technician: string;
   status: string;
   category: string;
+  displacementLevel?: string;
+  reason?: string;
 }
 
 export interface User {
