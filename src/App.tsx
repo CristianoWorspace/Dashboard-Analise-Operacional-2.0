@@ -952,18 +952,19 @@ const handleLogin = async (e: React.FormEvent) => {
           </button>
 
           {currentUser?.role === "Admin" && (
-          <button
-            onClick={() => setActiveTab("usuarios")}
-            className={`p-3 rounded-xl transition duration-200 cursor-pointer flex flex-col items-center gap-1 group ${
-              activeTab === "usuarios"
-                ? "text-indigo-400 bg-white/10 ring-1 ring-white/10"
-                : "text-slate-400 hover:text-white hover:bg-white/5"
-            }`}
-            title="Gerenciar Usuários"
-          >
-            <Users className="w-5 h-5" />
-            <span className="text-[9px] font-mono hidden md:block">Usuários</span>
-          </button>
+            <button
+              onClick={() => setActiveTab("usuarios")}
+              className={`p-3 rounded-xl transition duration-200 cursor-pointer flex flex-col items-center gap-1 group ${
+                activeTab === "usuarios"
+                  ? "text-indigo-400 bg-white/10 ring-1 ring-white/10"
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
+              }`}
+              title="Gerenciar Usuários"
+            >
+              <Users className="w-5 h-5" />
+              <span className="text-[9px] font-mono hidden md:block">Usuários</span>
+            </button>
+          )}
 
           {currentUser?.role === "Admin" && (
             <button
@@ -978,8 +979,7 @@ const handleLogin = async (e: React.FormEvent) => {
               <Search className="w-5 h-5" />
               <span className="text-[9px] font-mono hidden md:block">Auditoria</span>
             </button>
-          )
-
+          )}
         </nav>
 
         {/* Technical Profile Footer in Sidebar */}
