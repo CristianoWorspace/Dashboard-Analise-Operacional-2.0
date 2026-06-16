@@ -307,6 +307,25 @@ const handleLogin = async (e: React.FormEvent) => {
   const [auditError, setAuditError] = useState<string>("");
   const [auditSuccess, setAuditSuccess] = useState<string>("");
   const [selectedAuditDemand, setSelectedAuditDemand] = useState<RawDemand | null>(null);
+  const [auditFilters, setAuditFilters] = useState<{
+    date_start: string;
+    date_end: string;
+    protocol: string;
+    triedToConfirm: string;
+    clientConfirmed: string;
+    schedulingError: string;
+    whoErrored: string;
+    errorReason: string;
+  }>({
+    date_start: "",
+    date_end: "",
+    protocol: "",
+    triedToConfirm: "all",
+    clientConfirmed: "all",
+    schedulingError: "all",
+    whoErrored: "all",
+    errorReason: "all",
+  });
   const [auditForm, setAuditForm] = useState<AuditRecord>({
     date: "",
     protocol: "",
@@ -320,10 +339,20 @@ const handleLogin = async (e: React.FormEvent) => {
   const fetchAuditRecords = async () => {
     setFetchingAuditRecords(true);
     try {
-      const response = await fetch("/api/audit");
+      const queryParams = new URLSearchParams();
+      if (auditFilters.date_start) queryParams.append("date_start", auditFilters.date_start);
+      if (auditFilters.date_end) queryParams.append("date_end", auditFilters.date_end);
+      if (auditFilters.protocol) queryParams.append("protocol", auditFilters.protocol);
+      if (auditFilters.triedToConfirm !== "all") queryParams.append("triedToConfirm", auditFilters.triedToConfirm);
+      if (auditFilters.clientConfirmed !== "all") queryParams.append("clientConfirmed", auditFilters.clientConfirmed);
+      if (auditFilters.schedulingError !== "all") queryParams.append("schedulingError", auditFilters.schedulingError);
+      if (auditFilters.whoErrored !== "all") queryParams.append("whoErrored", auditFilters.whoErrored);
+      if (auditFilters.errorReason !== "all") queryParams.append("errorReason", auditFilters.errorReason);
+
+      const response = await fetch(`/api/audit?${queryParams.toString()}`);
       const result = await response.json();
       if (result.success) {
-        setAuditRecords(result.records || []);
+        setAuditDemands(result.records || []);
       } else {
         setAuditError(result.message || "Erro ao carregar registros de auditoria.");
       }
@@ -339,7 +368,7 @@ const handleLogin = async (e: React.FormEvent) => {
     if (activeTab === "auditoria") {
       fetchAuditRecords();
     }
-  }, [activeTab]);
+  }, [activeTab, auditFilters]);
 
   const handleAuditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -415,14 +444,25 @@ const handleLogin = async (e: React.FormEvent) => {
     status: "all",
     category: "all",
     displacementLevel: "com_deslocamento",
-    reason: "all"
+    reason: "all",
+    city: "all"
   });
 
   // Load spreadsheet data from the backend proxy
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/data");
+      const queryParams = new URLSearchParams();
+      if (filters.startDate) queryParams.append("schedule_date_start", filters.startDate);
+      if (filters.endDate) queryParams.append("schedule_date_end", filters.endDate);
+      if (filters.technician !== "all") queryParams.append("name", filters.technician);
+      if (filters.status !== "all") queryParams.append("status", filters.status);
+      if (filters.category !== "all") queryParams.append("TipoOS_category", filters.category); // Using a custom filter for category
+      if (filters.displacementLevel !== "all") queryParams.append("nivel", filters.displacementLevel);
+      if (filters.reason !== "all") queryParams.append("reason", filters.reason);
+      if (filters.city !== "all") queryParams.append("city", filters.city);
+
+      const response = await fetch(`/api/data?${queryParams.toString()}`);
       const result = await response.json();
       
       let rawData = result.data || [];
@@ -444,22 +484,8 @@ const handleLogin = async (e: React.FormEvent) => {
 
       // Check if first row is headers (array of strings, where keys represent meta)
       let parsedRows: RawDemand[] = [];
-      let startIndex = 0;
-      if (rowsToProcess.length > 0 && Array.isArray(rowsToProcess[0])) {
-        const testHeader = rowsToProcess[0].join(" ").toLowerCase();
-        if (
-          testHeader.includes("status") || 
-          testHeader.includes("demanda") || 
-          testHeader.includes("data") || 
-          testHeader.includes("servi") ||
-          testHeader.includes("técnico") ||
-          testHeader.includes("motivo")
-        ) {
-          startIndex = 1; // skip header row
-        }
-      }
-
-      for (let i = startIndex; i < rowsToProcess.length; i++) {
+      // The Apps Script now returns an array of objects, so no need to skip header row or guess structure
+      for (let i = 0; i < rowsToProcess.length; i++) {
         parsedRows.push(parseSheetRow(rowsToProcess[i], i));
       }
 
@@ -494,7 +520,7 @@ const handleLogin = async (e: React.FormEvent) => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [filters]); // Re-fetch data when filters change
 
   // Quick helper to reset all filter values
   const handleClearFilters = () => {
@@ -980,6 +1006,7 @@ const handleLogin = async (e: React.FormEvent) => {
               <span className="text-[9px] font-mono hidden md:block">Auditoria</span>
             </button>
           )}
+
         </nav>
 
         {/* Technical Profile Footer in Sidebar */}
@@ -1185,6 +1212,25 @@ const handleLogin = async (e: React.FormEvent) => {
                       <option value="Recolhimentos">Recolhimentos / Cancelamento</option>
                     </>
                   )}
+                </select>
+              </div>
+
+              {/* Filter: City */}
+              <div>
+                <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+                  🏙️ Cidade
+                </label>
+                <select
+                  value={filters.city}
+                  onChange={(e) => setFilters(p => ({ ...p, city: e.target.value }))}
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+                >
+                  <option value="all">Todas as Cidades</option>
+                  {/* You'll need to populate this dynamically from your data if cities are not fixed */}
+                  {/* For now, adding a placeholder. You might need to extract unique cities from your dataState.demands */}
+                  <option value="Gramado">Gramado</option>
+                  <option value="Canela">Canela</option>
+                  <option value="Nova Petrópolis">Nova Petrópolis</option>
                 </select>
               </div>
 
@@ -2013,50 +2059,132 @@ const handleLogin = async (e: React.FormEvent) => {
 
             {/* Filtros para Auditoria */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-md font-bold text-slate-700 mb-4">Demandas para Auditoria</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Status</label>
-                  <select
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
-                    value={filters.status}
-                    onChange={(e) => setFilters(p => ({ ...p, status: e.target.value }))}
-                  >
-                    <option value="reagendado">Reagendado</option>
-                  </select>
+              <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-2 font-mono">
+                      <SlidersHorizontal className="w-4 h-4 text-indigo-500" />
+                      Filtros de Auditoria
+                    </span>
+                    <button
+                      onClick={() => setAuditFilters({
+                        date_start: "",
+                        date_end: "",
+                        protocol: "",
+                        triedToConfirm: "all",
+                        clientConfirmed: "all",
+                        schedulingError: "all",
+                        whoErrored: "all",
+                        errorReason: "all",
+                      })}
+                      className="text-2xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline transition cursor-pointer"
+                    >
+                      Limpar Filtros
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+                        📅 Data Início
+                      </label>
+                      <input
+                        type="date"
+                        value={auditFilters.date_start}
+                        onChange={(e) => setAuditFilters(p => ({ ...p, date_start: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+                        📅 Data Fim
+                      </label>
+                      <input
+                        type="date"
+                        value={auditFilters.date_end}
+                        onChange={(e) => setAuditFilters(p => ({ ...p, date_end: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+                        # Protocolo
+                      </label>
+                      <input
+                        type="text"
+                        value={auditFilters.protocol}
+                        onChange={(e) => setAuditFilters(p => ({ ...p, protocol: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                        placeholder="Ex: 12345"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+                        Tentou Confirmar?
+                      </label>
+                      <select
+                        value={auditFilters.triedToConfirm}
+                        onChange={(e) => setAuditFilters(p => ({ ...p, triedToConfirm: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
+                      >
+                        <option value="all">Todos</option>
+                        <option value="SIM">SIM</option>
+                        <option value="NÃO">NÃO</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+                        Cliente Confirmou?
+                      </label>
+                      <select
+                        value={auditFilters.clientConfirmed}
+                        onChange={(e) => setAuditFilters(p => ({ ...p, clientConfirmed: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
+                      >
+                        <option value="all">Todos</option>
+                        <option value="SIM">SIM</option>
+                        <option value="NÃO">NÃO</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+                        Erro Agendamento?
+                      </label>
+                      <select
+                        value={auditFilters.schedulingError}
+                        onChange={(e) => setAuditFilters(p => ({ ...p, schedulingError: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition cursor-pointer"
+                      >
+                        <option value="all">Todos</option>
+                        <option value="SIM">SIM</option>
+                        <option value="NÃO">NÃO</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+                        Quem Errou?
+                      </label>
+                      <input
+                        type="text"
+                        value={auditFilters.whoErrored}
+                        onChange={(e) => setAuditFilters(p => ({ ...p, whoErrored: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                        placeholder="Ex: Técnico, Cliente"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+                        Motivo do Erro
+                      </label>
+                      <input
+                        type="text"
+                        value={auditFilters.errorReason}
+                        onChange={(e) => setAuditFilters(p => ({ ...p, errorReason: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition"
+                        placeholder="Ex: Chuva, Ausente"
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Nível de Deslocamento</label>
-                  <select
-                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
-                    value={filters.displacementLevel}
-                    onChange={(e) => setFilters(p => ({ ...p, displacementLevel: e.target.value }))}
-                  >
-                    <option value="com_deslocamento">Com Deslocamento</option>
-                  </select>
-                </div>
-              </div>
-              <div className="mt-4">
-                <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Motivo (Col C)</label>
-                <select
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:focus:border-indigo-400 transition cursor-pointer"
-                  value={filters.reason}
-                  onChange={(e) => setFilters(p => ({ ...p, reason: e.target.value }))}
-                >
-                  <option value="all">Todos os Motivos</option>
-                  <option value="Cliente não estava">Cliente não estava</option>
-                  <option value="Cliente solicitou Reagenda">Cliente solicitou Reagenda</option>
-                  <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda">Erro de Confirmação - Sem Retorno - Remoção da Agenda</option>
-                  <option value="Erro de Confirmação - Contato desatualizado - Remoção da Agenda">Erro de Confirmação - Contato desatualizado - Remoção da Agenda</option>
-                  <option value="Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada">Erro de Confirmação - Sem Retorno - Remoção da Agenda - Equipe foi deslocada</option>
-                  <option value="Agendamento Ok - Cliente Reagendou">Agendamento Ok - Cliente Reagendou</option>
-                  <option value="Antecipado por ser Externo">Antecipado por ser Externo</option>
-                  <option value="Erro de Confirmação - Chamado contato errado - Remoção da Agenda">Erro de Confirmação - Chamado contato errado - Remoção da Agenda</option>
-                  <option value="Não deu tempo - Reagendado pela equipe técnica">Não deu tempo - Reagendado pela equipe técnica</option>
-                  <option value="Motivo - Chuva - Equipe deslocada">Motivo - Chuva - Equipe deslocada</option>
-                  <option value="Motivo - Chuva - Equipe não deslocada">Motivo - Chuva - Equipe não deslocada</option>
-                </select>
-              </div>
             </div>
 
             {/* Tabela de Demandas para Auditoria */}
