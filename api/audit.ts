@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
+export default async function (request: VercelRequest, response: VercelResponse)
 import fetch from 'node-fetch';
 
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
