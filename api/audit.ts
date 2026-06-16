@@ -2,7 +2,7 @@ import fetch from 'node-fetch';
 
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
 
-export default async function (request: VercelRequest, response: VercelResponse) {
+export default async function (request: any, response: any) {
   if (!APPS_SCRIPT_URL) {
     return response.status(500).json({ success: false, message: 'APPS_SCRIPT_URL não configurado.' });
   }
