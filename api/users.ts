@@ -137,10 +137,10 @@ export default async function handler(req: any, res: any) {
     return res.status(405).json({ success: false, message: "Método não permitido." });
   } catch (e: any) {
     console.error("[api/users]", e);
-    return res.status(500).json({
-      success: false,
-      message: e?.message || "Erro ao comunicar com a planilha de usuários. Verifique o Apps Script."
-      error: String(e)
-    });
+return res.status(500).json({
+  success: false,
+  message: e?.message || "Erro ao comunicar com a planilha de usuários. Verifique o Apps Script.",
+  error: String(e)
+});
   }
 }
