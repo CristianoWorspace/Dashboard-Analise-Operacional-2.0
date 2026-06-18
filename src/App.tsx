@@ -2253,7 +2253,7 @@ const handleImportAuditRecords = async () => {
                         <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-center">Nenhuma demanda encontrada para auditoria com os filtros selecionados.</td>
                       </tr>
                     ) : (
-                      auditDemands.map((demand, index) => (
+                      paginatedAuditDemands.map((demand, index) => (
                         <tr key={index}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{demand.date}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.protocol}</td>
