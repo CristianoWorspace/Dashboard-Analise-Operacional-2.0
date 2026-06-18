@@ -517,7 +517,9 @@ const handleLogin = async (e: React.FormEvent) => {
       setLoading(false);
     }
   };
-
+const handleImportAuditRecords = async () => {
+  alert("Botão funcionando!");
+};
   useEffect(() => {
     fetchData();
   }, [filters]); // Re-fetch data when filters change
