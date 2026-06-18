@@ -16,11 +16,34 @@ export default async function (request: any, response: any) {
 
     // Importação de protocolos para auditoria
     if (action === 'importAuditRecords') {
-      return response.status(200).json({
-        success: true,
-        message: 'Importação acionada com sucesso.'
-      });
-    }
+
+  try {
+
+    const appsScriptResponse = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'importAuditRecords'
+      }),
+    });
+
+    const result = await appsScriptResponse.json();
+
+    return response.status(appsScriptResponse.status).json(result);
+
+  } catch (error: any) {
+
+    console.error('Erro ao importar protocolos:', error);
+
+    return response.status(500).json({
+      success: false,
+      message: error.message || 'Erro ao importar protocolos.'
+    });
+
+  }
+}
 
     // Salvar registro de auditoria
     const {
