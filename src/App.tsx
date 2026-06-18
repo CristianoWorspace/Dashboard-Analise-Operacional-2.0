@@ -518,7 +518,24 @@ const handleLogin = async (e: React.FormEvent) => {
     }
   };
 const handleImportAuditRecords = async () => {
-  alert("Botão funcionando!");
+  try {
+    const response = await fetch("/api/audit", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "importAuditRecords",
+      }),
+    });
+
+    const result = await response.json();
+
+    alert(result.message || "Requisição enviada.");
+  } catch (err: any) {
+    console.error(err);
+    alert("Erro ao chamar API.");
+  }
 };
   useEffect(() => {
     fetchData();
