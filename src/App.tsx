@@ -2281,7 +2281,9 @@ const handleImportAuditRecords = async () => {
             {/* Formulário de Auditoria */}
             {selectedAuditDemand && (
               <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                <h3 className="text-md font-bold text-slate-700 mb-4">Auditar Protocolo: {selectedAuditDemand.protocol_number}</h3>
+                <h3 className="text-md font-bold text-slate-700 mb-4">
+  Auditar Protocolo: {selectedAuditDemand.protocol}
+</h3>
                 <form onSubmit={handleSaveAuditRecord} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">Tentamos Confirmar?</label>
