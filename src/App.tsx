@@ -2265,9 +2265,7 @@ const handleImportAuditRecords = async () => {
 </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button
-                              onClick={() => {
-                                onClick={() => {
-  setSelectedAuditDemand(demand);
+                              onClick={() => {setSelectedAuditDemand(demand);
 
   setAuditForm({
     date: demand.date,
