@@ -2275,10 +2275,6 @@ const handleImportAuditRecords = async () => {
     errorReason: "",
   });
 
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth",
-  });
 }}
                               className="text-indigo-600 hover:text-indigo-900 text-xs font-semibold"
                             >
