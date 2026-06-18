@@ -2043,8 +2043,23 @@ const handleImportAuditRecords = async () => {
         {/* BENTO GRID: VIEW 6 - AUDITORIA DE REAGENDAMENTOS */}
         {!loading && activeTab === "auditoria" && currentUser?.role === "Admin" && (
           <div className="space-y-6">
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight font-display">Auditoria de Reagendamentos</h2>
-            <p className="text-sm text-slate-500">Analise e audite atividades reagendadas com deslocamento para identificar padrões e responsabilidades.</p>
+            <div className="flex items-center justify-between">
+  <div>
+    <h2 className="text-xl font-bold text-slate-900 tracking-tight font-display">
+      Auditoria de Reagendamentos
+    </h2>
+    <p className="text-sm text-slate-500">
+      Analise e audite atividades reagendadas com deslocamento para identificar padrões e responsabilidades.
+    </p>
+  </div>
+
+  <button
+    onClick={handleImportAuditRecords}
+    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold transition-colors"
+  >
+    Importar Protocolos
+  </button>
+</div>
 
             {auditError && (
               <div className="mb-5 p-3 rounded-xl bg-rose-550/10 border border-rose-500/20 flex gap-2 text-rose-300 text-xs items-start leading-relaxed">
