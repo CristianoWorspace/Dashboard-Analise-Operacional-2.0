@@ -300,6 +300,18 @@ const handleLogin = async (e: React.FormEvent) => {
   const [simulatedEmail, setSimulatedEmail] = useState<any | null>(null);
 
   // Audit states
+  const [auditPage, setAuditPage] = useState(1);
+
+const auditItemsPerPage = 10;
+
+const paginatedAuditDemands = auditDemands.slice(
+  (auditPage - 1) * auditItemsPerPage,
+  auditPage * auditItemsPerPage
+);
+
+const totalAuditPages = Math.ceil(
+  auditDemands.length / auditItemsPerPage
+);
   const [auditDemands, setAuditDemands] = useState<RawDemand[]>([]);
   const [auditRecords, setAuditRecords] = useState<AuditRecord[]>([]);
   const [fetchingAuditRecords, setFetchingAuditRecords] = useState<boolean>(false);
