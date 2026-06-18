@@ -2287,6 +2287,27 @@ const handleImportAuditRecords = async () => {
                     )}
                   </tbody>
                 </table>
+                <div className="flex justify-center items-center gap-4 mt-4">
+  <button
+    disabled={auditPage === 1}
+    onClick={() => setAuditPage(p => p - 1)}
+    className="px-3 py-1 border rounded disabled:opacity-50"
+  >
+    Anterior
+  </button>
+
+  <span>
+    Página {auditPage} de {totalAuditPages}
+  </span>
+
+  <button
+    disabled={auditPage === totalAuditPages}
+    onClick={() => setAuditPage(p => p + 1)}
+    className="px-3 py-1 border rounded disabled:opacity-50"
+  >
+    Próxima
+  </button>
+</div>
               </div>
             </div>
 
