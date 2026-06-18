@@ -2266,17 +2266,24 @@ const handleImportAuditRecords = async () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <button
                               onClick={() => {
-                                setSelectedAuditDemand(demand);
-                                setAuditForm({
-                                  date: demand.date,
-                                  protocol: demand.protocol,
-                                  triedToConfirm: "",
-                                  clientConfirmed: "",
-                                  schedulingError: "",
-                                  whoErrored: "",
-                                  errorReason: "",
-                                });
-                              }}
+                                onClick={() => {
+  setSelectedAuditDemand(demand);
+
+  setAuditForm({
+    date: demand.date,
+    protocol: demand.protocol,
+    triedToConfirm: "",
+    clientConfirmed: "",
+    schedulingError: "",
+    whoErrored: "",
+    errorReason: "",
+  });
+
+  window.scrollTo({
+    top: 0,
+    behavior: "smooth",
+  });
+}}
                               className="text-indigo-600 hover:text-indigo-900 text-xs font-semibold"
                             >
                               Auditar
