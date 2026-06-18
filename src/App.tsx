@@ -2257,7 +2257,7 @@ const handleImportAuditRecords = async () => {
                                 setSelectedAuditDemand(demand);
                                 setAuditForm({
                                   date: demand.date,
-                                  protocol: demand.protocol_number,
+                                  protocol: demand.protocol,
                                   triedToConfirm: "",
                                   clientConfirmed: "",
                                   schedulingError: "",
