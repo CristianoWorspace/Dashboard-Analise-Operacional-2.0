@@ -27,6 +27,7 @@ export interface GeneralMetrics {
   totalAtivacoes: number;
   totalInfraestrutura: number;
   totalRecolhimentos: number;
+  totalEntregaCarne: number;
 }
 
 export interface RecolhimentoMetrics {
