@@ -347,3 +347,102 @@ export const calculateAuditIndicators = (auditRecords: AuditRecord[]) => {
     errorReasonCounts,
   };
 };
+/**
+ * Indicadores da página de Auditoria.
+ * Recebe demandas já deduplicadas por protocolo (groupDemandsByProtocol),
+ * registros reais da aba AUDITORIA, e um período de filtro.
+ */
+export interface AuditDashboardMetrics {
+  // Métrica 1: % de erro nosso
+  totalReagendadoUnico: number;
+  totalAgendamentoErrouSim: number;
+  pctErroAgendamento: number;
+
+  // Métrica 2: Reagendado + com_deslocamento
+  totalReagendadoComDeslocamento: number;
+  totalBaseComparacao: number; // Concluído + Reagendado + Não Realizado, todos com_deslocamento
+  pctReagendamentoSobreBase: number;
+
+  // Métrica 3: mesma base da Métrica 2, separada por categoria
+  suporte: { reagendado: number; base: number; pct: number };
+  ativacoes: { reagendado: number; base: number; pct: number };
+}
+
+export function calculateAuditDashboardMetrics(
+  demands: RawDemand[],        // já deduplicados por protocolo
+  auditRecords: AuditRecord[], // registros reais da aba AUDITORIA
+  startDate: string,
+  endDate: string
+): AuditDashboardMetrics {
+
+  // Filtra demands pelo período (schedule_date)
+  const inPeriod = demands.filter(d => {
+    if (!startDate && !endDate) return true;
+    const dDate = parseDate(d.date);
+    if (!dDate) return false;
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      if (dDate < start) return false;
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      if (dDate > end) return false;
+    }
+    return true;
+  });
+
+  // --- Métrica 1 ---
+  const reagendadosUnicos = inPeriod.filter(d => isStatusRescheduled(d.status));
+  const totalReagendadoUnico = reagendadosUnicos.length;
+
+  const protocolsInPeriod = new Set(reagendadosUnicos.map(d => d.protocol_number));
+  const auditadosErrouSim = auditRecords.filter(r =>
+    r.schedulingError === 'SIM' && protocolsInPeriod.has(r.protocol)
+  );
+  const totalAgendamentoErrouSim = auditadosErrouSim.length;
+  const pctErroAgendamento = totalReagendadoUnico > 0
+    ? (totalAgendamentoErrouSim / totalReagendadoUnico) * 100
+    : 0;
+
+  // --- Métrica 2 ---
+  const reagendadoComDeslocamento = inPeriod.filter(d =>
+    isStatusRescheduled(d.status) && d.nivel === "com_deslocamento"
+  );
+  const totalReagendadoComDeslocamento = reagendadoComDeslocamento.length;
+
+  const baseComparacao = inPeriod.filter(d =>
+    d.nivel === "com_deslocamento" &&
+    (isStatusCompleted(d.status) || isStatusRescheduled(d.status) || isStatusNotPerformed(d.status))
+  );
+  const totalBaseComparacao = baseComparacao.length;
+  const pctReagendamentoSobreBase = totalBaseComparacao > 0
+    ? (totalReagendadoComDeslocamento / totalBaseComparacao) * 100
+    : 0;
+
+  // --- Métrica 3 (mesma base, separada por categoria) ---
+  const suporteReagendado = reagendadoComDeslocamento.filter(d => d.category === "Suporte").length;
+  const suporteBase = baseComparacao.filter(d => d.category === "Suporte").length;
+  const ativacoesReagendado = reagendadoComDeslocamento.filter(d => d.category === "Ativações").length;
+  const ativacoesBase = baseComparacao.filter(d => d.category === "Ativações").length;
+
+  return {
+    totalReagendadoUnico,
+    totalAgendamentoErrouSim,
+    pctErroAgendamento,
+    totalReagendadoComDeslocamento,
+    totalBaseComparacao,
+    pctReagendamentoSobreBase,
+    suporte: {
+      reagendado: suporteReagendado,
+      base: suporteBase,
+      pct: suporteBase > 0 ? (suporteReagendado / suporteBase) * 100 : 0
+    },
+    ativacoes: {
+      reagendado: ativacoesReagendado,
+      base: ativacoesBase,
+      pct: ativacoesBase > 0 ? (ativacoesReagendado / ativacoesBase) * 100 : 0
+    }
+  };
+}
