@@ -1,6 +1,6 @@
-import usersHandler from "../users";
+// api/users/[username].ts
+import usersHandler from "../usersHandler";
 
 export default async function handler(req: any, res: any) {
-  // Repassa para o handler principal, o Vercel preenche req.query.username automaticamente
   return usersHandler(req, res);
 }
