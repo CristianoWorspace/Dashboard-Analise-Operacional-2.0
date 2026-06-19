@@ -375,12 +375,11 @@ const fetchAuditRecords = async () => {
   }
 };
 useEffect(() => {
+useEffect(() => {
   if (activeTab === "auditoria") {
     fetchAuditRecords();
-    fetchAuditedRecordsFromSheet(); // NOVO — só esta linha foi adicionada aqui dentro
   }
 }, [activeTab, auditFilters]);
-
 const handleAuditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
   const { name, value } = e.target;
   setAuditForm(prev => ({ ...prev, [name]: value }));
