@@ -374,20 +374,6 @@ const fetchAuditRecords = async () => {
     setFetchingAuditRecords(false);
   }
 };
-
-// NOVO — cola esta função logo abaixo de fetchAuditRecords
-const fetchAuditedRecordsFromSheet = async () => {
-  try {
-    const response = await fetch("/api/audit");
-    const result = await response.json();
-    if (result.success) {
-      setAuditRecords(result.records || []);
-    }
-  } catch (err) {
-    console.error("Failed to fetch audited records:", err);
-  }
-};
-
 useEffect(() => {
   if (activeTab === "auditoria") {
     fetchAuditRecords();
