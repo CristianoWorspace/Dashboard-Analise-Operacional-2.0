@@ -363,7 +363,7 @@ const fetchAuditRecords = async () => {
     const response = await fetch(`/api/audit?${queryParams.toString()}`);
     const result = await response.json();
     if (result.success) {
-      setAuditDemands(result.records || []);
+      setAuditRecords(result.records || []);
     } else {
       setAuditError(result.message || "Erro ao carregar registros de auditoria.");
     }
