@@ -2372,7 +2372,7 @@ const chartCategoryData = useMemo(() => {
             {selectedAuditDemand && (
               <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
                 <h3 className="text-md font-bold text-slate-700 mb-4">
-  Auditar Protocolo: {selectedAuditDemand.protocol}
+  Auditar Protocolo: {selectedAuditDemand.protocol_number}
 </h3>
                 <form onSubmit={handleSaveAuditRecord} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
