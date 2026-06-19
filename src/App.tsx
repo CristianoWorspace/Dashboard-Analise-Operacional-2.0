@@ -722,6 +722,9 @@ const handleImportAuditRecords = async () => {
   const schedulingAdherenceMetrics = useMemo(() => {
     return calculateSchedulingAdherenceMetrics(filteredDemands);
   }, [filteredDemands]);
+const displacementEfficiencyMetrics = useMemo(() => {
+  return calculateDisplacementEfficiencyMetrics(filteredDemands, selectedEfficiencyTechnician);
+}, [filteredDemands, selectedEfficiencyTechnician]);
 
   // Temporal and distribution chart datasets
   // 1. Demands trend over time (group by dynamic date string)
