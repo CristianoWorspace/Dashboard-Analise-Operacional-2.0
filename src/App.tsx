@@ -287,6 +287,7 @@ const handleLogin = async (e: React.FormEvent) => {
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [technicianList, setTechnicianList] = useState<string[]>([]);
+  const [selectedEfficiencyTechnician, setSelectedEfficiencyTechnician] = useState<string>("all");
 
   // User management states
   const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
