@@ -711,6 +711,9 @@ const handleImportAuditRecords = async () => {
     auditFilters.date_end
   );
 }, [groupedProtocols, auditRecords, auditFilters.date_start, auditFilters.date_end]);
+  const auditIndicators = useMemo(() => {
+  return calculateAuditIndicators(auditRecords);
+}, [auditRecords]);
 const displacementEfficiencyMetrics = useMemo(() => {
   return calculateDisplacementEfficiencyMetrics(filteredDemands, selectedEfficiencyTechnician);
 }, [filteredDemands, selectedEfficiencyTechnician]);
