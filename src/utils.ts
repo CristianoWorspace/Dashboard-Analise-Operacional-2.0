@@ -35,28 +35,21 @@ export function isStatusNotPerformed(status: string | undefined | null): boolean
 /**
  * Classifies a demand based on Column 4 (demand type/name)
  */
-export function classifyDemand(demandName: string): "Infraestrutura" | "Suporte" | "Recolhimentos" | "Ativações" {
+export function classifyDemand(demandName: string): "Infraestrutura" | "Suporte" | "Recolhimentos" | "Ativações" | "Entrega de Carnê" {
   const name = (demandName || "").toLowerCase();
   
-  // Rule: Infraestrutura = contains "infraestrutura" or "engenharia"
   const isInfra = name.includes("infraestrutura") || name.includes("engenharia");
-  if (isInfra) {
-    return "Infraestrutura";
-  }
+  if (isInfra) return "Infraestrutura";
   
-  // Rule: Recolhimentos = contains "recolhimento" or "cancelamento"
+  const isCarne = name.includes("carnê") || name.includes("carne");
+  if (isCarne) return "Entrega de Carnê";
+  
   const isRecolhimento = name.includes("recolhimento") || name.includes("cancelamento");
-  if (isRecolhimento) {
-    return "Recolhimentos";
-  }
+  if (isRecolhimento) return "Recolhimentos";
 
-  // Rule: Suporte = contains "deslocamento" (and not infraestrutura/engenharia/recolhimento)
   const isSuporte = name.includes("deslocamento");
-  if (isSuporte) {
-    return "Suporte";
-  }
+  if (isSuporte) return "Suporte";
   
-  // Rule: Ativações = everything else
   return "Ativações";
 }
 
