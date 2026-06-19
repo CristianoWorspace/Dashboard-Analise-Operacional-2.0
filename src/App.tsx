@@ -346,81 +346,94 @@ const paginatedAuditDemands = auditDemands.slice(
 const totalAuditPages = Math.ceil(
   auditDemands.length / auditItemsPerPage
 );
-  const fetchAuditRecords = async () => {
-    setFetchingAuditRecords(true);
-    try {
-      const queryParams = new URLSearchParams();
-      if (auditFilters.date_start) queryParams.append("date_start", auditFilters.date_start);
-      if (auditFilters.date_end) queryParams.append("date_end", auditFilters.date_end);
-      if (auditFilters.protocol) queryParams.append("protocol", auditFilters.protocol);
-      if (auditFilters.triedToConfirm !== "all") queryParams.append("triedToConfirm", auditFilters.triedToConfirm);
-      if (auditFilters.clientConfirmed !== "all") queryParams.append("clientConfirmed", auditFilters.clientConfirmed);
-      if (auditFilters.schedulingError !== "all") queryParams.append("schedulingError", auditFilters.schedulingError);
-      if (auditFilters.whoErrored !== "all") queryParams.append("whoErrored", auditFilters.whoErrored);
-      if (auditFilters.errorReason !== "all") queryParams.append("errorReason", auditFilters.errorReason);
-
-      const response = await fetch(`/api/audit?${queryParams.toString()}`);
-      const result = await response.json();
-      if (result.success) {
-        setAuditDemands(result.records || []);
-      } else {
-        setAuditError(result.message || "Erro ao carregar registros de auditoria.");
-      }
-    } catch (err) {
-      console.error("Failed to fetch audit records:", err);
-      setAuditError("Erro de comunicação ao carregar auditorias.");
-    } finally {
-      setFetchingAuditRecords(false);
+const fetchAuditRecords = async () => {
+  setFetchingAuditRecords(true);
+  try {
+    const queryParams = new URLSearchParams();
+    if (auditFilters.date_start) queryParams.append("date_start", auditFilters.date_start);
+    if (auditFilters.date_end) queryParams.append("date_end", auditFilters.date_end);
+    if (auditFilters.protocol) queryParams.append("protocol", auditFilters.protocol);
+    if (auditFilters.triedToConfirm !== "all") queryParams.append("triedToConfirm", auditFilters.triedToConfirm);
+    if (auditFilters.clientConfirmed !== "all") queryParams.append("clientConfirmed", auditFilters.clientConfirmed);
+    if (auditFilters.schedulingError !== "all") queryParams.append("schedulingError", auditFilters.schedulingError);
+    if (auditFilters.whoErrored !== "all") queryParams.append("whoErrored", auditFilters.whoErrored);
+    if (auditFilters.errorReason !== "all") queryParams.append("errorReason", auditFilters.errorReason);
+    const response = await fetch(`/api/audit?${queryParams.toString()}`);
+    const result = await response.json();
+    if (result.success) {
+      setAuditDemands(result.records || []);
+    } else {
+      setAuditError(result.message || "Erro ao carregar registros de auditoria.");
     }
-  };
+  } catch (err) {
+    console.error("Failed to fetch audit records:", err);
+    setAuditError("Erro de comunicação ao carregar auditorias.");
+  } finally {
+    setFetchingAuditRecords(false);
+  }
+};
 
-  useEffect(() => {
-    if (activeTab === "auditoria") {
-      fetchAuditRecords();
+// NOVO — cola esta função logo abaixo de fetchAuditRecords
+const fetchAuditedRecordsFromSheet = async () => {
+  try {
+    const response = await fetch("/api/audit");
+    const result = await response.json();
+    if (result.success) {
+      setAuditRecords(result.records || []);
     }
-  }, [activeTab, auditFilters]);
+  } catch (err) {
+    console.error("Failed to fetch audited records:", err);
+  }
+};
 
-  const handleAuditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setAuditForm(prev => ({ ...prev, [name]: value }));
-  };
+useEffect(() => {
+  if (activeTab === "auditoria") {
+    fetchAuditRecords();
+    fetchAuditedRecordsFromSheet(); // NOVO — só esta linha foi adicionada aqui dentro
+  }
+}, [activeTab, auditFilters]);
 
-  const handleSaveAuditRecord = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmittingAuditRecord(true);
-    setAuditError("");
-    setAuditSuccess("");
+const handleAuditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const { name, value } = e.target;
+  setAuditForm(prev => ({ ...prev, [name]: value }));
+};
 
-    try {
-      const response = await fetch("/api/audit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(auditForm),
+const handleSaveAuditRecord = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setSubmittingAuditRecord(true);
+  setAuditError("");
+  setAuditSuccess("");
+  try {
+    const response = await fetch("/api/audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(auditForm),
+    });
+    const result = await response.json();
+    if (result.success) {
+      setAuditSuccess("Registro de auditoria salvo com sucesso!");
+      setAuditForm({
+        date: "",
+        protocol: "",
+        triedToConfirm: "",
+        clientConfirmed: "",
+        schedulingError: "",
+        whoErrored: "",
+        errorReason: "",
       });
-      const result = await response.json();
-      if (result.success) {
-        setAuditSuccess("Registro de auditoria salvo com sucesso!");
-        setAuditForm({
-          date: "",
-          protocol: "",
-          triedToConfirm: "",
-          clientConfirmed: "",
-          schedulingError: "",
-          whoErrored: "",
-          errorReason: "",
-        });
-        setSelectedAuditDemand(null);
-        fetchAuditRecords();
-      } else {
-        setAuditError(result.message || "Erro ao salvar registro de auditoria.");
-      }
-    } catch (err) {
-      console.error("Failed to save audit record:", err);
-      setAuditError("Erro de comunicação ao salvar auditoria.");
-    } finally {
-      setSubmittingAuditRecord(false);
+      setSelectedAuditDemand(null);
+      fetchAuditRecords();
+      fetchAuditedRecordsFromSheet(); // NOVO — atualiza os indicadores após salvar
+    } else {
+      setAuditError(result.message || "Erro ao salvar registro de auditoria.");
     }
-  };
+  } catch (err) {
+    console.error("Failed to save audit record:", err);
+    setAuditError("Erro de comunicação ao salvar auditoria.");
+  } finally {
+    setSubmittingAuditRecord(false);
+  }
+};
   
   // UI States
   const [selectedRecord, setSelectedRecord] = useState<RawDemand | null>(null);
