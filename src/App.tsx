@@ -762,14 +762,15 @@ const handleImportAuditRecords = async () => {
   }, [filteredDemands]);
 
   // 2. Category share dataset for custom visuals
-  const chartCategoryData = useMemo(() => {
-    return [
-      { name: "Suporte", value: generalMetrics.totalSuporte, completed: generalMetrics.completedSuporte, color: "#6366F1" }, // Indigo
-      { name: "Ativações", value: generalMetrics.totalAtivacoes, completed: generalMetrics.completedAtivacoes, color: "#0EA5E9" }, // Sky
-      { name: "Infraestrutura", value: generalMetrics.totalInfraestrutura, completed: generalMetrics.completedInfraestrutura, color: "#10B981" }, // Emerald
-      { name: "Recolhimentos", value: generalMetrics.totalRecolhimentos, completed: generalMetrics.completedRecolhimentos, color: "#F59E0B" }  // Amber
-    ].filter(item => item.value > 0);
-  }, [generalMetrics]);
+const chartCategoryData = useMemo(() => {
+  return [
+    { name: "Suporte", value: generalMetrics.totalSuporte, completed: generalMetrics.completedSuporte, color: "#6366F1" }, // Indigo
+    { name: "Ativações", value: generalMetrics.totalAtivacoes, completed: generalMetrics.completedAtivacoes, color: "#0EA5E9" }, // Sky
+    { name: "Infraestrutura", value: generalMetrics.totalInfraestrutura, completed: generalMetrics.completedInfraestrutura, color: "#10B981" }, // Emerald
+    { name: "Recolhimentos", value: generalMetrics.totalRecolhimentos, completed: generalMetrics.completedRecolhimentos, color: "#F59E0B" }, // Amber
+    { name: "Entrega de Carnê", value: generalMetrics.totalEntregaCarne, completed: generalMetrics.completedEntregaCarne, color: "#EC4899" } // Pink
+  ].filter(item => item.value > 0);
+}, [generalMetrics]);
 
   // 3. Status distribution dataset (completed, failed, rescheduled)
   const chartStatusData = useMemo(() => {
