@@ -2480,22 +2480,77 @@ const chartCategoryData = useMemo(() => {
               </div>
             )}
 
-            {/* Indicadores de Auditoria */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-md font-bold text-slate-700 mb-4">Indicadores de Auditoria</h3>
-              {auditRecords.length === 0 ? (
-                <p className="text-sm text-slate-500">Nenhum registro de auditoria para exibir indicadores.</p>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {/* Exemplo de Indicador: % de Reagendamentos Confirmados */}
-                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                    <p className="text-xs font-bold text-slate-500">% Confirmados</p>
-                    <p className="text-2xl font-black text-indigo-600">{((auditRecords.filter(r => r.triedToConfirm === "SIM").length / auditRecords.length) * 100 || 0).toFixed(1)}%</p>
-                  </div>
-                  {/* Adicionar mais indicadores aqui */}
-                </div>
-              )}
-            </div>
+  {/* Indicadores de Auditoria */}
+<div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+  <div className="flex items-center justify-between mb-4">
+    <h3 className="text-md font-bold text-slate-700">Indicadores de Auditoria</h3>
+    <span className="text-2xs text-slate-400 font-mono">
+      {auditRecords.length} registros auditados no período
+    </span>
+  </div>
+
+  {auditRecords.length === 0 ? (
+    <p className="text-sm text-slate-500">Nenhum registro de auditoria para exibir indicadores no período selecionado.</p>
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+      {/* Métrica 1: % de erro nosso */}
+      <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl">
+        <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block mb-1">
+          % de Erro Nosso
+        </span>
+        <span className="text-3xl font-black text-rose-700 block">
+          {auditDashboardMetrics.pctErroAgendamento.toFixed(1)}%
+        </span>
+        <p className="text-[10px] text-rose-800 mt-2 leading-relaxed">
+          {auditDashboardMetrics.totalAgendamentoErrouSim} auditados com erro de agendamento
+          de {auditDashboardMetrics.totalReagendadoUnico} reagendados únicos no período.
+        </p>
+      </div>
+
+      {/* Métrica 2: Reagendado com deslocamento / base */}
+      <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl">
+        <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-1">
+          Reagendado c/ Deslocamento
+        </span>
+        <span className="text-3xl font-black text-amber-700 block">
+          {auditDashboardMetrics.pctReagendamentoSobreBase.toFixed(1)}%
+        </span>
+        <p className="text-[10px] text-amber-800 mt-2 leading-relaxed">
+          {auditDashboardMetrics.totalReagendadoComDeslocamento} reagendados com deslocamento
+          de {auditDashboardMetrics.totalBaseComparacao} demandas com deslocamento no período
+          (concluído + reagendado + não realizado).
+        </p>
+      </div>
+
+      {/* Métrica 3: Suporte vs Ativações */}
+      <div className="bg-indigo-50 border border-indigo-100 p-4 rounded-xl">
+        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider block mb-1">
+          Suporte vs Ativações
+        </span>
+        <div className="flex items-baseline justify-between mt-1">
+          <div>
+            <span className="text-xl font-black text-indigo-700 block">
+              {auditDashboardMetrics.suporte.pct.toFixed(1)}%
+            </span>
+            <span className="text-[9px] text-indigo-500 font-mono uppercase">Suporte</span>
+          </div>
+          <div className="text-right">
+            <span className="text-xl font-black text-indigo-700 block">
+              {auditDashboardMetrics.ativacoes.pct.toFixed(1)}%
+            </span>
+            <span className="text-[9px] text-indigo-500 font-mono uppercase">Ativações</span>
+          </div>
+        </div>
+        <p className="text-[10px] text-indigo-800 mt-2 leading-relaxed">
+          Suporte: {auditDashboardMetrics.suporte.reagendado} de {auditDashboardMetrics.suporte.base}.
+          Ativações: {auditDashboardMetrics.ativacoes.reagendado} de {auditDashboardMetrics.ativacoes.base}.
+        </p>
+      </div>
+
+    </div>
+  )}
+</div>
           </div>
         )}
 
