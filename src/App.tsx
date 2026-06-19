@@ -61,6 +61,7 @@ import {
   calculateOperationalEfficiencyMetrics,
   calculateSchedulingAdherenceMetrics,
   calculateAuditDashboardMetrics,
+  calculateAuditIndicators,
   calculateDisplacementEfficiencyMetrics,
   parseDate, 
   groupDemandsByProtocol, 
