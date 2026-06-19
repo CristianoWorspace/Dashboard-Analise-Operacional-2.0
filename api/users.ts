@@ -32,7 +32,11 @@ function assertUserPayload(body: any) {
 }
 
 async function callSheet(action: string, payload?: Record<string, any>) {
-  const url = `${APPS_SCRIPT_URL}?action=${encodeURIComponent(action)}`;
+  const urlParams = new URLSearchParams({ action });
+  if (payload?.username) urlParams.append("username", payload.username);
+
+  const url = `${APPS_SCRIPT_URL}?${urlParams.toString()}`;
+
   const response = await fetch(url, {
     method: payload ? "POST" : "GET",
     headers: payload ? { "Content-Type": "application/json" } : undefined,
@@ -112,7 +116,7 @@ export default async function handler(req: any, res: any) {
     }
 
     if (req.method === "DELETE") {
-      const username = String(req.query.username || "").trim().toLowerCase();
+      const username = String(req.query.username || req.body.username || "").trim().toLowerCase();
       if (!username) {
         return res.status(400).json({ success: false, message: "Usuário não informado para exclusão." });
       }
