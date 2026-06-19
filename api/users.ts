@@ -1,7 +1,4 @@
-// api/users.ts — Vercel Serverless
-// Substitua o arquivo atual por este.
-// A planilha passa a ser a fonte de verdade; o fallback só mantém o admin master quando a aba USUARIOS ainda não estiver disponível.
-
+// api/users.ts
 type AppUser = {
   name: string;
   username: string;
@@ -15,11 +12,11 @@ const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
 function normalizeUser(raw: any): AppUser | null {
   if (!raw || typeof raw !== "object") return null;
 
-  const name = String(raw.name ?? raw.Nome ?? raw.nome ?? "").trim();
-  const username = String(raw.username ?? raw.USUARIO ?? raw.usuario ?? raw.user ?? "").trim().toLowerCase();
-  const password = String(raw.password ?? raw.SENHA ?? raw.senha ?? "").trim();
-  const email = String(raw.email ?? raw["E-MAIL"] ?? raw.Email ?? raw.email_address ?? "").trim();
-  const role = String(raw.role ?? raw["Nivel de Acesso"] ?? raw["Nível de Acesso"] ?? raw.nivel ?? "Colaborador").trim();
+  const name     = String(raw.nome     ?? raw.name     ?? "").trim();
+  const username = String(raw.usuario  ?? raw.username ?? "").trim().toLowerCase();
+  const password = String(raw.senha    ?? raw.password ?? "").trim();
+  const email    = String(raw.email    ?? raw["e-mail"] ?? "").trim();
+  const role     = String(raw.nivel_de_acesso ?? raw.role ?? "Colaborador").trim();
 
   if (!name || !username || !email || !role) return null;
 
@@ -49,7 +46,7 @@ async function callSheet(action: string, payload?: Record<string, any>) {
   try {
     result = JSON.parse(text);
   } catch {
-    throw new Error(`Apps Script não retornou JSON válido para ${action}. Resposta inicial: ${text.slice(0, 250)}`);
+    throw new Error(`Apps Script não retornou JSON válido para ${action}. Resposta: ${text.slice(0, 250)}`);
   }
 
   if (!response.ok) {
@@ -61,15 +58,16 @@ async function callSheet(action: string, payload?: Record<string, any>) {
 
 async function getUsersFromSheet() {
   const result = await callSheet("getUsers");
-  const rawUsers = Array.isArray(result.users) ? result.users : Array.isArray(result.data) ? result.data : [];
+  const rawUsers = Array.isArray(result.users)
+    ? result.users
+    : Array.isArray(result.data)
+    ? result.data
+    : [];
+
   const users = rawUsers.map(normalizeUser).filter(Boolean) as AppUser[];
 
-  // Se o Apps Script antigo estiver ignorando action=getUsers, ele devolverá dados da aba Dados.
-  // Nesse caso, não devemos fingir que funcionou.
   if (users.length === 0 && rawUsers.length > 0) {
-    throw new Error(
-      "O Apps Script respondeu dados, mas não usuários. Provavelmente o doGet/doPost ainda não trata action=getUsers nem a aba USUARIOS."
-    );
+    throw new Error("Usuários recebidos do Apps Script não puderam ser normalizados. Verifique os campos retornados.");
   }
 
   return users;
@@ -79,7 +77,6 @@ export default async function handler(req: any, res: any) {
   try {
     if (req.method === "GET") {
       const users = await getUsersFromSheet();
-      // Não exponha senha para a interface administrativa.
       return res.status(200).json({
         success: true,
         users: users.map(({ password, ...safe }) => safe)
@@ -89,11 +86,9 @@ export default async function handler(req: any, res: any) {
     if (req.method === "POST") {
       const newUser = assertUserPayload(req.body);
       const result = await callSheet("createUser", newUser);
-
       if (result.success === false) {
         return res.status(400).json({ success: false, message: result.message || "A planilha recusou a criação do usuário." });
       }
-
       return res.status(200).json({ success: true, user: result.user || { ...newUser, password: undefined } });
     }
 
@@ -102,20 +97,17 @@ export default async function handler(req: any, res: any) {
       if (!username) {
         return res.status(400).json({ success: false, message: "Usuário não informado para atualização." });
       }
-
       const payload = {
         username,
-        name: req.body.name,
+        name:     req.body.name,
         password: req.body.password,
-        email: req.body.email,
-        role: req.body.role
+        email:    req.body.email,
+        role:     req.body.role
       };
-
       const result = await callSheet("updateUser", payload);
       if (result.success === false) {
         return res.status(400).json({ success: false, message: result.message || "A planilha recusou a atualização do usuário." });
       }
-
       return res.status(200).json({ success: true, user: result.user });
     }
 
@@ -124,23 +116,21 @@ export default async function handler(req: any, res: any) {
       if (!username) {
         return res.status(400).json({ success: false, message: "Usuário não informado para exclusão." });
       }
-
-
       const result = await callSheet("deleteUser", { username });
       if (result.success === false) {
         return res.status(400).json({ success: false, message: result.message || "A planilha recusou a exclusão do usuário." });
       }
-
       return res.status(200).json({ success: true, message: result.message || "Usuário removido com sucesso." });
     }
 
     return res.status(405).json({ success: false, message: "Método não permitido." });
+
   } catch (e: any) {
     console.error("[api/users]", e);
-return res.status(500).json({
-  success: false,
-  message: e?.message || "Erro ao comunicar com a planilha de usuários. Verifique o Apps Script.",
-  error: String(e)
-});
+    return res.status(500).json({
+      success: false,
+      message: e?.message || "Erro ao comunicar com a planilha de usuários.",
+      error: String(e)
+    });
   }
 }
