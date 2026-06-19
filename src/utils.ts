@@ -193,10 +193,12 @@ export function calculateGeneralMetrics(demands: RawDemand[]): GeneralMetrics {
   let completedAtivacoes = 0;
   let completedInfraestrutura = 0;
   let completedRecolhimentos = 0;
+  let completedEntregaCarne = 0;
   let totalSuporte = 0;
   let totalAtivacoes = 0;
   let totalInfraestrutura = 0;
   let totalRecolhimentos = 0;
+  let totalEntregaCarne = 0;
 
   demands.forEach(d => {
     const isCompleted = isStatusCompleted(d.status);
@@ -217,13 +219,17 @@ export function calculateGeneralMetrics(demands: RawDemand[]): GeneralMetrics {
         totalRecolhimentos++;
         if (isCompleted) completedRecolhimentos++;
         break;
+      case "Entrega de Carnê":
+        totalEntregaCarne++;
+        if (isCompleted) completedEntregaCarne++;
+        break;
     }
   });
 
   return {
     totalDemands, totalCompleted, schedulingEfficiency,
-    completedSuporte, completedAtivacoes, completedInfraestrutura, completedRecolhimentos,
-    totalSuporte, totalAtivacoes, totalInfraestrutura, totalRecolhimentos
+    completedSuporte, completedAtivacoes, completedInfraestrutura, completedRecolhimentos, completedEntregaCarne,
+    totalSuporte, totalAtivacoes, totalInfraestrutura, totalRecolhimentos, totalEntregaCarne
   };
 }
 
