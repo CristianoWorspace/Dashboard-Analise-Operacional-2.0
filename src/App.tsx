@@ -670,39 +670,20 @@ const handleImportAuditRecords = async () => {
   }, [baseDemands, filters, searchQuery]);
 
   // Audit Demands filtering logic
-  useEffect(() => {
-    if (activeTab === "auditoria") {
-      const filtered = filteredDemands.filter(demand => {
-        const statusLower = demand.status.toLowerCase();
-        const nivelLower = demand.nivel?.toLowerCase() || "";
-        const motivoLower = demand.reason?.toLowerCase() || "";
+ useEffect(() => {
+  if (activeTab === "auditoria") {
+    const auditedProtocols = new Set(auditRecords.map(r => r.protocol));
 
-        const matchesStatus = statusLower.includes(filters.status.toLowerCase());
-        const matchesNivel = filters.displacementLevel === "all" || nivelLower.includes(filters.displacementLevel?.toLowerCase() || "");
-        
-        const motivosElegiveis = [
-          "cliente não estava",
-          "cliente solicitou reagenda",
-          "erro de confirmação - sem retorno - remoção da agenda",
-          "erro de confirmação - contato desatualizado - remoção da agenda",
-          "erro de confirmação - sem retorno - remoção da agenda - equipe foi deslocada",
-          "agendamento ok - cliente reagendou",
-          "antecipado por ser externo",
-          "erro de confirmação - chamado contato errado - remoção da agenda",
-          "não deu tempo - reagendado pela equipe técnica",
-          "motivo - chuva - equipe deslocada",
-          "motivo - chuva - equipe não deslocada",
-        ];
+    const filtered = filteredDemands.filter(demand => {
+      const isReagendado = isStatusRescheduled(demand.status);
+      const isComDeslocamento = demand.nivel === "com_deslocamento";
+      const jaAuditado = auditedProtocols.has(demand.protocol_number);
 
-        const matchesMotivo = filters.reason === "all" 
-          ? motivosElegiveis.some(m => motivoLower.includes(m))
-          : motivoLower.includes(filters.reason?.toLowerCase() || "");
-
-        return matchesStatus && matchesNivel && matchesMotivo;
-      });
-      setAuditDemands(filtered);
-    }
-  }, [filteredDemands, activeTab, filters.status, filters.displacementLevel, filters.reason]);
+      return isReagendado && isComDeslocamento && !jaAuditado;
+    });
+    setAuditDemands(filtered);
+  }
+}, [filteredDemands, activeTab, auditRecords]);
 
   // Compute stats dynamically based on current filtered dataset
   const generalMetrics = useMemo(() => {
