@@ -1406,6 +1406,47 @@ const chartCategoryData = useMemo(() => {
                 <p className="text-[10px] text-slate-500 mt-2 font-medium">Recuperação de equipamentos em cancelamentos.</p>
               </div>
             </div>
+{/* Nova Seção: Eficiência de Deslocamento */}
+<div className="grid grid-cols-12 gap-6 mb-6">
+  <div className="col-span-12 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col">
+    <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-6 border-b border-slate-100 pb-3">
+      📊 Eficiência de Deslocamento por Técnico
+    </h4>
+    <div className="mb-4">
+      <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+        🔧 Selecionar Técnico para Análise Individual
+      </label>
+      <select
+        value={selectedEfficiencyTechnician}
+        onChange={(e) => setSelectedEfficiencyTechnician(e.target.value)}
+        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+      >
+        <option value="all">Visão Geral (Todos os Técnicos)</option>
+        {technicianList.map((tech, i) => (
+          <option key={i} value={tech}>{tech}</option>
+        ))}
+      </select>
+    </div>
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Total Deslocamentos</span>
+        <span className="text-xl font-black text-slate-900">{displacementEfficiencyMetrics.totalDemandsWithDisplacement}</span>
+      </div>
+      <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+        <span className="text-[10px] font-bold text-emerald-500 uppercase block mb-1">Concluídos</span>
+        <span className="text-xl font-black text-emerald-600">{displacementEfficiencyMetrics.completedDemandsWithDisplacement}</span>
+      </div>
+      <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+        <span className="text-[10px] font-bold text-blue-500 uppercase block mb-1">Dias com Atividade</span>
+        <span className="text-xl font-black text-blue-600">{displacementEfficiencyMetrics.uniqueDaysWithDisplacement}</span>
+      </div>
+      <div className="p-4 bg-indigo-600 rounded-xl shadow-md ring-1 ring-indigo-700">
+        <span className="text-[10px] font-bold text-indigo-100 uppercase block mb-1">Média Concluídos/Dia</span>
+        <span className="text-2xl font-black text-white">{displacementEfficiencyMetrics.avgCompletedDisplacementPerDay.toFixed(2)}</span>
+      </div>
+    </div>
+  </div>
+</div>
 
             {/* Charts Section Row */}
             <div className="grid grid-cols-12 gap-6">
