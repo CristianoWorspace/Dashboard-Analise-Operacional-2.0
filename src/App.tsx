@@ -60,9 +60,11 @@ import {
   calculateRecolhimentoMetrics, 
   calculateOperationalEfficiencyMetrics,
   calculateSchedulingAdherenceMetrics,
+  calculateAuditDashboardMetrics,
   parseDate, 
   groupDemandsByProtocol, 
-  isStatusCompleted 
+  isStatusCompleted,
+  isStatusRescheduled
 } from "./utils";
 import { 
   RawDemand, 
