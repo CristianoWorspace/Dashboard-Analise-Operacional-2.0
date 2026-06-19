@@ -61,17 +61,20 @@ import {
   calculateOperationalEfficiencyMetrics,
   calculateSchedulingAdherenceMetrics,
   calculateAuditDashboardMetrics,
+  calculateDisplacementEfficiencyMetrics,
   parseDate, 
   groupDemandsByProtocol, 
   isStatusCompleted,
   isStatusRescheduled
 } from "./utils";
+
 import { 
   RawDemand, 
   DashboardFilters, 
   User,
   OperationalEfficiencyMetrics,
   SchedulingAdherenceMetrics,
+  DisplacementEfficiencyMetrics,
   AuditRecord
 } from "./types";
 
