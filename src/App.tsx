@@ -379,7 +379,6 @@ const fetchAuditRecords = async () => {
   }
 };
 useEffect(() => {
-useEffect(() => {
   if (activeTab === "auditoria") {
     fetchAuditRecords();
   }
