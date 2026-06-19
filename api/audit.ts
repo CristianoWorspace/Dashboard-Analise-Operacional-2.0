@@ -1,3 +1,4 @@
+// api/audit.ts
 import fetch from 'node-fetch';
 
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL;
@@ -11,39 +12,30 @@ export default async function (request: any, response: any) {
   }
 
   if (request.method === 'POST') {
-
     const { action } = request.body;
 
     // Importação de protocolos para auditoria
     if (action === 'importAuditRecords') {
-
-  try {
-
-    const appsScriptResponse = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        action: 'importAuditRecords'
-      }),
-    });
-
-    const result = await appsScriptResponse.json();
-
-    return response.status(appsScriptResponse.status).json(result);
-
-  } catch (error: any) {
-
-    console.error('Erro ao importar protocolos:', error);
-
-    return response.status(500).json({
-      success: false,
-      message: error.message || 'Erro ao importar protocolos.'
-    });
-
-  }
-}
+      try {
+        const appsScriptResponse = await fetch(APPS_SCRIPT_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: 'importAuditRecords'
+          }),
+        });
+        const result = await appsScriptResponse.json();
+        return response.status(appsScriptResponse.status).json(result);
+      } catch (error: any) {
+        console.error('Erro ao importar protocolos:', error);
+        return response.status(500).json({
+          success: false,
+          message: error.message || 'Erro ao importar protocolos.'
+        });
+      }
+    }
 
     // Salvar registro de auditoria
     const {
@@ -78,25 +70,20 @@ export default async function (request: any, response: any) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'saveAuditRecord',
-          record: {
-            date,
-            protocol,
-            triedToConfirm,
-            clientConfirmed,
-            schedulingError,
-            whoErrored,
-            errorReason
-          },
+          action: 'audit',
+          date,
+          protocol,
+          triedToConfirm,
+          clientConfirmed,
+          schedulingError,
+          whoErrored,
+          errorReason
         }),
       });
-
       const result = await appsScriptResponse.json();
       return response.status(appsScriptResponse.status).json(result);
-
     } catch (error: any) {
       console.error('Erro ao salvar registro de auditoria:', error);
-
       return response.status(500).json({
         success: false,
         message: error.message || 'Erro interno ao salvar registro de auditoria.'
@@ -104,29 +91,21 @@ export default async function (request: any, response: any) {
     }
 
   } else if (request.method === 'GET') {
-
     try {
       const appsScriptResponse = await fetch(
         APPS_SCRIPT_URL + '?action=getAuditRecords'
       );
-
       const result = await appsScriptResponse.json();
-
       return response.status(appsScriptResponse.status).json(result);
-
     } catch (error: any) {
       console.error('Erro ao obter registros de auditoria:', error);
-
       return response.status(500).json({
         success: false,
         message: error.message || 'Erro interno ao obter registros de auditoria.'
       });
     }
-
   } else {
-
     response.setHeader('Allow', ['GET', 'POST']);
     response.status(405).end(`Method ${request.method} Not Allowed`);
-
   }
 }
