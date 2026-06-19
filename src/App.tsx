@@ -2000,6 +2000,12 @@ const handleImportAuditRecords = async () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
+                      <button 
+  onClick={fetchRegisteredUsers}
+  className="mb-4 px-4 py-2 bg-indigo-600 text-white rounded text-xs"
+>
+  Recarregar usuários
+</button>
                       {fetchingUsers ? (
                         <tr><td colSpan={4} className="py-8 text-center text-xs text-slate-400">Carregando lista...</td></tr>
                       ) : registeredUsers.map((u, i) => (
