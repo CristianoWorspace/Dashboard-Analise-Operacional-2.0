@@ -410,7 +410,6 @@ const handleSaveAuditRecord = async (e: React.FormEvent) => {
       });
       setSelectedAuditDemand(null);
       fetchAuditRecords();
-      fetchAuditedRecordsFromSheet(); // NOVO — atualiza os indicadores após salvar
     } else {
       setAuditError(result.message || "Erro ao salvar registro de auditoria.");
     }
