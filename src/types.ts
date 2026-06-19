@@ -90,3 +90,10 @@ export interface AuditRecord {
 
 export type AuditWhoErroredOptions = AuditRecord['whoErrored'];
 export type AuditErrorReasonOptions = AuditRecord['errorReason'];
+export interface DisplacementEfficiencyMetrics {
+  totalDemandsWithDisplacement: number;
+  completedDemandsWithDisplacement: number;
+  uniqueDaysWithDisplacement: number;
+  avgCompletedDisplacementPerDay: number;
+  technicianName?: string;
+}
