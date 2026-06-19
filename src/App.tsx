@@ -2307,45 +2307,42 @@ const chartCategoryData = useMemo(() => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-slate-200">
-                    {auditDemands.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-center">Nenhuma demanda encontrada para auditoria com os filtros selecionados.</td>
-                      </tr>
-                    ) : (
-                      paginatedAuditDemands.map((demand, index) => (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{demand.date}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.protocol}</td>
-<td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-  {demand.triedToConfirm ? "Auditado" : "Pendente"}
-</td>
-<td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-  {demand.errorReason || "-"}
-</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              onClick={() => {setSelectedAuditDemand(demand);
-
-  setAuditForm({
-    date: demand.date,
-    protocol: demand.protocol,
-    triedToConfirm: "",
-    clientConfirmed: "",
-    schedulingError: "",
-    whoErrored: "",
-    errorReason: "",
-  });
-
-}}
-                              className="text-indigo-600 hover:text-indigo-900 text-xs font-semibold"
-                            >
-                              Auditar
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
+  {auditDemands.length === 0 ? (
+    <tr>
+      <td colSpan={5} className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 text-center">Nenhuma demanda encontrada para auditoria com os filtros selecionados.</td>
+    </tr>
+  ) : (
+    paginatedAuditDemands.map((demand, index) => (
+      <tr key={index}>
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{demand.date}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">#{demand.protocol_number || "S/P"}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.status}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 max-w-[220px] truncate" title={demand.reason}>
+          {demand.reason || "-"}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          <button
+            onClick={() => {
+              setSelectedAuditDemand(demand);
+              setAuditForm({
+                date: demand.date,
+                protocol: demand.protocol_number,
+                triedToConfirm: "",
+                clientConfirmed: "",
+                schedulingError: "",
+                whoErrored: "",
+                errorReason: "",
+              });
+            }}
+            className="text-indigo-600 hover:text-indigo-900 text-xs font-semibold"
+          >
+            Auditar
+          </button>
+        </td>
+      </tr>
+    ))
+  )}
+</tbody>
                 </table>
                 <div className="flex justify-center items-center gap-4 mt-4">
   <button
