@@ -446,3 +446,36 @@ export function calculateAuditDashboardMetrics(
     }
   };
 }
+/**
+ * Calcula métricas de eficiência de deslocamento, opcionalmente para um técnico específico.
+ */
+export function calculateDisplacementEfficiencyMetrics(demands: RawDemand[], technicianName?: string): DisplacementEfficiencyMetrics {
+  let filteredDemands = demands.filter(d => d.nivel === "com_deslocamento");
+
+  if (technicianName && technicianName !== "all") {
+    filteredDemands = filteredDemands.filter(d => d.technician === technicianName);
+  }
+
+  const totalDemandsWithDisplacement = filteredDemands.length;
+  const completedDemandsWithDisplacement = filteredDemands.filter(d => isStatusCompleted(d.status)).length;
+
+  const uniqueDates = new Set<string>();
+  filteredDemands.forEach(d => {
+    if (isStatusCompleted(d.status)) {
+      uniqueDates.add(d.date);
+    }
+  });
+  const uniqueDaysWithDisplacement = uniqueDates.size;
+
+  const avgCompletedDisplacementPerDay = uniqueDaysWithDisplacement > 0 
+    ? completedDemandsWithDisplacement / uniqueDaysWithDisplacement 
+    : 0;
+
+  return {
+    totalDemandsWithDisplacement,
+    completedDemandsWithDisplacement,
+    uniqueDaysWithDisplacement,
+    avgCompletedDisplacementPerDay,
+    technicianName: technicianName || "Geral"
+  };
+}
