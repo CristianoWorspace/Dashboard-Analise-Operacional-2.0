@@ -2554,11 +2554,32 @@ const chartCategoryData = useMemo(() => {
           ))}
       </div>
     )}
+</div>
+  )}
+
+  {/* Erros por Atendente */}
+  <div className="mt-4 bg-slate-50 border border-slate-100 rounded-xl p-4">
+    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-3">
+      Nº de Protocolos com Erro por Atendente
+    </span>
+    {Object.keys(auditIndicators.whoErroredCounts).length === 0 ? (
+      <p className="text-xs text-slate-400">Nenhum erro de agendamento atribuído no período.</p>
+    ) : (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+        {Object.entries(auditIndicators.whoErroredCounts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([name, count]) => (
+            <div key={name} className="bg-white border border-slate-200 rounded-lg p-3 flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700">{name}</span>
+              <span className="text-lg font-black text-rose-600">{count}</span>
+            </div>
+          ))}
+      </div>
+    )}
   </div>
 </div>
           </div>
         )}
-
         {activeTab !== "usuarios" && activeTab !== "auditoria" && (
           <div className="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           
