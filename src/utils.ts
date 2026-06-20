@@ -369,14 +369,14 @@ export interface AuditDashboardMetrics {
 }
 
 export function calculateAuditDashboardMetrics(
-  demands: RawDemand[],        // já deduplicados por protocolo
+  demands: RawDemand[],        // lista CRUA (não agrupada) — a função agrupa internamente onde necessário
   auditRecords: AuditRecord[], // registros reais da aba AUDITORIA
   startDate: string,
   endDate: string
 ): AuditDashboardMetrics {
 
-  // Filtra demands pelo período (schedule_date)
-  const inPeriod = demands.filter(d => {
+  // Helper de filtro por período (schedule_date), reutilizado nas duas bases abaixo
+  const filterByPeriod = (list: RawDemand[]) => list.filter(d => {
     if (!startDate && !endDate) return true;
     const dDate = parseDate(d.date);
     if (!dDate) return false;
@@ -393,11 +393,21 @@ export function calculateAuditDashboardMetrics(
     return true;
   });
 
-  // --- Métrica 1 ---
-  const reagendadosUnicos = inPeriod.filter(d => isStatusRescheduled(d.status));
-  const totalReagendadoUnico = reagendadosUnicos.length;
+  // Base CRUA filtrada por período — usada na Métrica 1, que precisa do rastro de
+  // eventos "Reagendado" mesmo que o protocolo tenha sido concluído depois.
+  const inPeriodRaw = filterByPeriod(demands);
 
-  const protocolsInPeriod = new Set(reagendadosUnicos.map(d => d.protocol_number));
+  // Base AGRUPADA por protocolo, filtrada por período — usada nas Métricas 2 e 3,
+  // que olham o estado atual da operação (não o histórico de eventos).
+  const inPeriodGrouped = filterByPeriod(groupDemandsByProtocol(demands));
+
+  // --- Métrica 1 ---
+  // Deduplica por protocolo entre as linhas com status "Reagendado" (mesmo protocolo
+  // pode aparecer 2x por ter 2 técnicos, mas o status é o mesmo nesses casos)
+  const reagendadosBrutos = inPeriodRaw.filter(d => isStatusRescheduled(d.status));
+  const protocolsInPeriod = new Set(reagendadosBrutos.map(d => d.protocol_number));
+  const totalReagendadoUnico = protocolsInPeriod.size;
+
   const auditadosErrouSim = auditRecords.filter(r =>
     r.schedulingError === 'SIM' && protocolsInPeriod.has(r.protocol)
   );
@@ -407,12 +417,12 @@ export function calculateAuditDashboardMetrics(
     : 0;
 
   // --- Métrica 2 ---
-  const reagendadoComDeslocamento = inPeriod.filter(d =>
+  const reagendadoComDeslocamento = inPeriodGrouped.filter(d =>
     isStatusRescheduled(d.status) && d.nivel === "com_deslocamento"
   );
   const totalReagendadoComDeslocamento = reagendadoComDeslocamento.length;
 
-  const baseComparacao = inPeriod.filter(d =>
+  const baseComparacao = inPeriodGrouped.filter(d =>
     d.nivel === "com_deslocamento" &&
     (isStatusCompleted(d.status) || isStatusRescheduled(d.status) || isStatusNotPerformed(d.status))
   );
