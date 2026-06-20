@@ -31,7 +31,30 @@ export function isStatusNotPerformed(status: string | undefined | null): boolean
   const norm = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   return norm.includes("nao realizado") || norm.includes("não realizado");
 }
+/**
+ * Helper to determine if a status string represents a not performed task.
+ */
+export function isStatusNotPerformed(status: string | undefined | null): boolean {
+  if (!status) return false;
+  const s = status.toLowerCase();
+  const norm = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return norm.includes("nao realizado") || norm.includes("não realizado");
+}
 
+/**
+ * Considera uma demanda como "com deslocamento" se o campo nivel diz isso
+ * explicitamente, OU se o status já é Concluído — pois toda demanda concluída
+ * obrigatoriamente envolveu deslocamento, mesmo que o campo nivel esteja vazio
+ * (ele só é preenchido quando há uma decisão de reagendamento a registrar).
+ */
+export function isEffectivelyWithDisplacement(demand: RawDemand): boolean {
+  return demand.nivel === "com_deslocamento" || isStatusCompleted(demand.status);
+}
+
+/**
+ * Classifies a demand based on Column 4 (demand type/name)
+ */
+export function classifyDemand(demandName: string): "Infraestrutura" | "Suporte" | "Recolhimentos" | "Ativações" | "Entrega de Carnê" {
 /**
  * Classifies a demand based on Column 4 (demand type/name)
  */
