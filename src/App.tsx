@@ -60,6 +60,7 @@ import {
   calculateRecolhimentoMetrics, 
   calculateOperationalEfficiencyMetrics,
   calculateSchedulingAdherenceMetrics,
+  calculateSchedulingTrendData,
   calculateAuditDashboardMetrics,
   calculateAuditIndicators,
   calculateDisplacementEfficiencyMetrics,
