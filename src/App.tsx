@@ -719,45 +719,9 @@ const displacementEfficiencyMetrics = useMemo(() => {
   return calculateDisplacementEfficiencyMetrics(filteredDemands, selectedEfficiencyTechnician);
 }, [filteredDemands, selectedEfficiencyTechnician]);
 
-  // Temporal and distribution chart datasets
-  // 1. Demands trend over time (group by dynamic date string)
+ // Temporal trend: aderência de agendamento (com_deslocamento) ao longo do tempo
   const chartTrendData = useMemo(() => {
-    const groups: { [key: string]: { total: number; concluido: number; falhas: number; reagendado: number } } = {};
-    
-    // Sort items chronologically before grouping
-    const sorted = [...filteredDemands].sort((a, b) => {
-      const da = parseDate(a.date);
-      const db = parseDate(b.date);
-      return (da?.getTime() || 0) - (db?.getTime() || 0);
-    });
-
-    sorted.forEach(item => {
-      // Group by formatted date dd/mm or YYYY-MM
-      const dObj = parseDate(item.date);
-      const dateKey = dObj 
-        ? `${dObj.getDate().toString().padStart(2, "0")}/${(dObj.getMonth() + 1).toString().padStart(2, "0")}`
-        : item.date || "N/A";
-      
-      if (!groups[dateKey]) {
-        groups[dateKey] = { total: 0, concluido: 0, falhas: 0, reagendado: 0 };
-      }
-      
-      groups[dateKey].total++;
-      const s = item.status.toLowerCase();
-      if (isStatusCompleted(item.status)) {
-        groups[dateKey].concluido++;
-      } else if (s.includes("reagendado")) {
-        groups[dateKey].reagendado++;
-      } else if (s.includes("não") || s.includes("nao")) {
-        groups[dateKey].falhas++;
-      }
-    });
-
-    // Take the last 15 points if the series is long, to keep visuals breathtaking
-    return Object.keys(groups).map(key => ({
-      name: key,
-      ...groups[key]
-    })).slice(-15);
+    return calculateSchedulingTrendData(filteredDemands);
   }, [filteredDemands]);
 
   // 2. Category share dataset for custom visuals
