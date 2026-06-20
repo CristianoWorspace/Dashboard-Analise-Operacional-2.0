@@ -237,31 +237,53 @@ export function calculateGeneralMetrics(demands: RawDemand[]): GeneralMetrics {
 }
 
 /**
- * Calculates specialized metrics for Retrievals Dashboard (Recolhimentos)
- * Updated: Only counts as effective if category is Recolhimentos AND status is Completed.
+ * Calcula métricas do dashboard de Recolhimentos.
+ * Base: categoria "Recolhimentos" (tipo_os contém "Recolhimento" e/ou "Cancelamento"), SEM deduplicação.
+ *
+ * - totalAttempts: Concluído + Reagendado + Não Realizado
+ * - effectiveRetrievals (Total Recolhidos): apenas Concluído
+ * - sentToBilling: reason contém "enviado a cobrança" (correspondência parcial)
+ * - retrievalEffectiveness: Concluído / (Concluído + Não Realizado) — exclui Reagendado do denominador
+ * - reasonBreakdown: contagem de motivos (coluna reason) para Reagendado + Não Realizado, ordenado por frequência
  */
 export function calculateRecolhimentoMetrics(demands: RawDemand[]): RecolhimentoMetrics {
   const recolhimentos = demands.filter(d => d.category === "Recolhimentos");
-  const totalAttempts = recolhimentos.length;
-  const effectiveRetrievals = recolhimentos.filter(d => isStatusCompleted(d.status)).length;
+
+  const completed = recolhimentos.filter(d => isStatusCompleted(d.status));
+  const rescheduled = recolhimentos.filter(d => isStatusRescheduled(d.status));
+  const notPerformed = recolhimentos.filter(d => isStatusNotPerformed(d.status));
+
+  const totalAttempts = completed.length + rescheduled.length + notPerformed.length;
+  const effectiveRetrievals = completed.length;
 
   const sentToBilling = recolhimentos.filter(d => {
-    const statusLower = d.status.toLowerCase();
-    const reasonLower = d.reason.toLowerCase();
-    return (isStatusNotPerformed(d.status) || statusLower.includes("cobrança")) && reasonLower.includes("cobrança");
+    const norm = (d.reason || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return norm.includes("enviado a cobranca");
   }).length;
 
-  const teamDidNotGo = recolhimentos.filter(d => isStatusRescheduled(d.status) && d.reason.toLowerCase().includes("não foi")).length;
-  const clientAusente = recolhimentos.filter(d => isStatusRescheduled(d.status) && d.reason.toLowerCase().includes("não estava")).length;
-  const clientRefused = recolhimentos.filter(d => isStatusRescheduled(d.status) && d.reason.toLowerCase().includes("recusou")).length;
+  const recoveryBase = completed.length + notPerformed.length;
+  const retrievalEffectiveness = recoveryBase > 0 ? (effectiveRetrievals / recoveryBase) * 100 : 0;
 
-  const retrievalEffectiveness = totalAttempts > 0 ? (effectiveRetrievals / totalAttempts) * 100 : 0;
+  // Gráfico de motivos: Reagendado + Não Realizado, agrupado por reason (coluna C)
+  const reasonCounts: { [key: string]: number } = {};
+  [...rescheduled, ...notPerformed].forEach(d => {
+    const reason = (d.reason || "").trim();
+    if (reason !== "") {
+      reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+    }
+  });
+  const reasonBreakdown = Object.entries(reasonCounts)
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count);
 
   return {
-    totalAttempts, effectiveRetrievals, sentToBilling, teamDidNotGo, clientAusente, clientRefused, retrievalEffectiveness
+    totalAttempts,
+    effectiveRetrievals,
+    sentToBilling,
+    retrievalEffectiveness,
+    reasonBreakdown
   };
 }
-
 /**
  * Eficiência Operacional: concluídas com deslocamento / total com deslocamento.
  */
