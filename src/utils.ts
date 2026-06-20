@@ -589,7 +589,7 @@ export function calculateSchedulingTrendData(demands: RawDemand[]): SchedulingTr
   const excludedTypes = ["carnê", "carne", "recolhimento", "cancelamento", "engenharia", "infraestrutura", "evento"];
 
   const eligible = demands.filter(d =>
-    d.nivel === "com_deslocamento" &&
+    isEffectivelyWithDisplacement(d) &&
     !excludedTypes.some(type => (d.demand || "").toLowerCase().includes(type)) &&
     (isStatusCompleted(d.status) || isStatusRescheduled(d.status) || isStatusNotPerformed(d.status))
   );
