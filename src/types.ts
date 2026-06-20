@@ -34,10 +34,8 @@ export interface RecolhimentoMetrics {
   totalAttempts: number;
   effectiveRetrievals: number;
   sentToBilling: number;
-  teamDidNotGo: number;
-  clientAusente: number;
-  clientRefused: number;
   retrievalEffectiveness: number;
+  reasonBreakdown: { reason: string; count: number }[];
 }
 
 export interface OperationalEfficiencyMetrics {
