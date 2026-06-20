@@ -159,23 +159,26 @@ export function parseDate(dateString: string): Date | null {
 }
 
 /**
- * Groups demands by protocol number.
+ * Groups demands by protocol number — mas SOMENTE quando o mesmo protocolo
+ * aparece no mesmo dia (date) com o mesmo status. Esse é o único cenário em que
+ * a duplicidade é causada por múltiplos técnicos no mesmo evento/atendimento.
+ * Se o protocolo aparece em datas ou status diferentes, são eventos distintos
+ * (tentativas diferentes) e devem permanecer como linhas separadas.
  */
 export function groupDemandsByProtocol(demands: RawDemand[]): RawDemand[] {
   const grouped: { [key: string]: RawDemand } = {};
 
   demands.forEach(demand => {
-    if (demand.protocol_number) {
-      if (!grouped[demand.protocol_number]) {
-        grouped[demand.protocol_number] = { ...demand, technicians: [demand.technician], isGroupedProtocol: true };
-      }
-      if (demand.technician && !grouped[demand.protocol_number].technicians?.includes(demand.technician)) {
-        grouped[demand.protocol_number].technicians?.push(demand.technician);
-      }
-      // Prioritize 'Concluído' status for the grouped protocol
-      if (isStatusCompleted(demand.status)) {
-        grouped[demand.protocol_number].status = demand.status;
-      }
+    if (!demand.protocol_number) return;
+
+    // Chave de agrupamento: protocolo + data + status (evento específico)
+    const key = `${demand.protocol_number}__${demand.date}__${demand.status}`;
+
+    if (!grouped[key]) {
+      grouped[key] = { ...demand, technicians: [demand.technician], isGroupedProtocol: true };
+    }
+    if (demand.technician && !grouped[key].technicians?.includes(demand.technician)) {
+      grouped[key].technicians?.push(demand.technician);
     }
   });
   return Object.values(grouped);
