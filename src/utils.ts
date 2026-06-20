@@ -327,9 +327,9 @@ export function calculateOperationalEfficiencyMetrics(demands: RawDemand[]): Ope
  * Aderência do Agendamento: exclui tipos específicos.
  */
 export function calculateSchedulingAdherenceMetrics(demands: RawDemand[]): SchedulingAdherenceMetrics {
-  const excludedTypes = ["recolhimento", "cancelamento", "entrega de carne"];
+  const excludedTypes = ["recolhimento", "cancelamento", "entrega de carne", "carnê", "engenharia", "infraestrutura", "evento"];
   const eligible = demands.filter(d => 
-    d.nivel === "com_deslocamento" && 
+    isEffectivelyWithDisplacement(d) && 
     !excludedTypes.some(type => d.demand.toLowerCase().includes(type))
   );
 
@@ -343,7 +343,6 @@ export function calculateSchedulingAdherenceMetrics(demands: RawDemand[]): Sched
     schedulingAdherence: adherence
   };
 };
-
 /**
  * Filter demands that need auditing based on operational criteria.
  */
