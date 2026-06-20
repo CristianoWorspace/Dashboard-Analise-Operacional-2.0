@@ -401,6 +401,8 @@ export function calculateAuditDashboardMetrics(
   const totalReagendadoUnico = reagendadosUnicos.length;
 
   const protocolsInPeriod = new Set(reagendadosUnicos.map(d => d.protocol_number));
+  console.log("DEBUG protocolsInPeriod:", Array.from(protocolsInPeriod));
+  console.log("DEBUG auditRecords com erro SIM:", auditRecords.filter(r => r.schedulingError === 'SIM').map(r => r.protocol));
   const auditadosErrouSim = auditRecords.filter(r =>
     r.schedulingError === 'SIM' && protocolsInPeriod.has(r.protocol)
   );
