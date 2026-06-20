@@ -451,35 +451,80 @@ export function calculateAuditDashboardMetrics(
   };
 }
 /**
- * Calcula métricas de eficiência de deslocamento, opcionalmente para um técnico específico.
+ * Calcula métricas de eficiência de Suporte (categoria "Suporte", que já exclui
+ * Engenharia/Infraestrutura via classifyDemand), opcionalmente para um técnico específico.
+ * "Dias trabalhados" = dias distintos em que o técnico teve ao menos 1 Suporte concluído.
+ * No modo "all" (Geral), a média exibida é a média simples entre as médias individuais
+ * de cada técnico, não um agregado bruto do total.
  */
 export function calculateDisplacementEfficiencyMetrics(demands: RawDemand[], technicianName?: string): DisplacementEfficiencyMetrics {
-  let filteredDemands = demands.filter(d => d.nivel === "com_deslocamento");
+  // Base: apenas demandas de Suporte (já exclui Engenharia/Infraestrutura)
+  const suporteDemands = demands.filter(d => d.category === "Suporte");
 
+  // Caso 1: técnico específico selecionado
   if (technicianName && technicianName !== "all") {
-    filteredDemands = filteredDemands.filter(d => d.technician === technicianName);
+    const techDemands = suporteDemands.filter(d => d.technician === technicianName);
+    const totalDemandsWithDisplacement = techDemands.length;
+    const completedDemandsWithDisplacement = techDemands.filter(d => isStatusCompleted(d.status)).length;
+
+    const uniqueDates = new Set<string>();
+    techDemands.forEach(d => {
+      if (isStatusCompleted(d.status)) uniqueDates.add(d.date);
+    });
+    const uniqueDaysWithDisplacement = uniqueDates.size;
+
+    const avgCompletedDisplacementPerDay = uniqueDaysWithDisplacement > 0
+      ? completedDemandsWithDisplacement / uniqueDaysWithDisplacement
+      : 0;
+
+    return {
+      totalDemandsWithDisplacement,
+      completedDemandsWithDisplacement,
+      uniqueDaysWithDisplacement,
+      avgCompletedDisplacementPerDay,
+      technicianName
+    };
   }
 
-  const totalDemandsWithDisplacement = filteredDemands.length;
-  const completedDemandsWithDisplacement = filteredDemands.filter(d => isStatusCompleted(d.status)).length;
+  // Caso 2: "all" — média simples entre as médias individuais de cada técnico
+  const technicianNames = Array.from(
+    new Set(suporteDemands.map(d => d.technician).filter(t => t && t.trim() !== ""))
+  );
 
-  const uniqueDates = new Set<string>();
-  filteredDemands.forEach(d => {
-    if (isStatusCompleted(d.status)) {
-      uniqueDates.add(d.date);
+  let totalDemandsWithDisplacement = 0;
+  let completedDemandsWithDisplacement = 0;
+  let totalUniqueDays = 0;
+  const individualAverages: number[] = [];
+
+  technicianNames.forEach(tech => {
+    const techDemands = suporteDemands.filter(d => d.technician === tech);
+    const techTotal = techDemands.length;
+    const techCompleted = techDemands.filter(d => isStatusCompleted(d.status)).length;
+
+    const uniqueDates = new Set<string>();
+    techDemands.forEach(d => {
+      if (isStatusCompleted(d.status)) uniqueDates.add(d.date);
+    });
+    const techUniqueDays = uniqueDates.size;
+
+    totalDemandsWithDisplacement += techTotal;
+    completedDemandsWithDisplacement += techCompleted;
+    totalUniqueDays += techUniqueDays;
+
+    if (techUniqueDays > 0) {
+      individualAverages.push(techCompleted / techUniqueDays);
     }
   });
-  const uniqueDaysWithDisplacement = uniqueDates.size;
 
-  const avgCompletedDisplacementPerDay = uniqueDaysWithDisplacement > 0 
-    ? completedDemandsWithDisplacement / uniqueDaysWithDisplacement 
+  const avgCompletedDisplacementPerDay = individualAverages.length > 0
+    ? individualAverages.reduce((acc, v) => acc + v, 0) / individualAverages.length
     : 0;
 
   return {
     totalDemandsWithDisplacement,
     completedDemandsWithDisplacement,
-    uniqueDaysWithDisplacement,
+    uniqueDaysWithDisplacement: totalUniqueDays,
     avgCompletedDisplacementPerDay,
-    technicianName: technicianName || "Geral"
+    technicianName: "Geral"
   };
 }
