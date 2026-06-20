@@ -401,8 +401,17 @@ export function calculateAuditDashboardMetrics(
   const totalReagendadoUnico = reagendadosUnicos.length;
 
   const protocolsInPeriod = new Set(reagendadosUnicos.map(d => d.protocol_number));
-  console.log("DEBUG protocolsInPeriod:", Array.from(protocolsInPeriod));
-  console.log("DEBUG auditRecords com erro SIM:", auditRecords.filter(r => r.schedulingError === 'SIM').map(r => r.protocol));
+
+  // DEBUG temporário
+  const errosSim = auditRecords.filter(r => r.schedulingError === 'SIM');
+  errosSim.forEach(r => {
+    console.log(
+      "DEBUG comparando:",
+      JSON.stringify(r.protocol), typeof r.protocol,
+      "está em protocolsInPeriod?", protocolsInPeriod.has(r.protocol)
+    );
+  });
+
   const auditadosErrouSim = auditRecords.filter(r =>
     r.schedulingError === 'SIM' && protocolsInPeriod.has(r.protocol)
   );
