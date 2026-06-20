@@ -550,3 +550,55 @@ export function calculateDisplacementEfficiencyMetrics(demands: RawDemand[], tec
     technicianName: "Geral"
   };
 }
+/**
+ * Tendência temporal de "Aderência de Agendamento" (com_deslocamento).
+ * Agrupa por data: Total = Concluído + Reagendado + Não Realizado (nivel com_deslocamento),
+ * excluindo tipo_os que contenha: entrega de carnê, recolhimento, cancelamento,
+ * engenharia, infraestrutura ou evento.
+ * Concluído = mesma base, apenas status concluído.
+ */
+export interface SchedulingTrendPoint {
+  name: string; // dd/mm
+  total: number;
+  concluido: number;
+}
+
+export function calculateSchedulingTrendData(demands: RawDemand[]): SchedulingTrendPoint[] {
+  const excludedTypes = ["carnê", "carne", "recolhimento", "cancelamento", "engenharia", "infraestrutura", "evento"];
+
+  const eligible = demands.filter(d =>
+    d.nivel === "com_deslocamento" &&
+    !excludedTypes.some(type => (d.demand || "").toLowerCase().includes(type)) &&
+    (isStatusCompleted(d.status) || isStatusRescheduled(d.status) || isStatusNotPerformed(d.status))
+  );
+
+  // Ordena cronologicamente antes de agrupar
+  const sorted = [...eligible].sort((a, b) => {
+    const da = parseDate(a.date);
+    const db = parseDate(b.date);
+    return (da?.getTime() || 0) - (db?.getTime() || 0);
+  });
+
+  const groups: { [key: string]: { total: number; concluido: number } } = {};
+
+  sorted.forEach(item => {
+    const dObj = parseDate(item.date);
+    const dateKey = dObj
+      ? `${dObj.getDate().toString().padStart(2, "0")}/${(dObj.getMonth() + 1).toString().padStart(2, "0")}`
+      : item.date || "N/A";
+
+    if (!groups[dateKey]) {
+      groups[dateKey] = { total: 0, concluido: 0 };
+    }
+
+    groups[dateKey].total++;
+    if (isStatusCompleted(item.status)) {
+      groups[dateKey].concluido++;
+    }
+  });
+
+  return Object.keys(groups).map(key => ({
+    name: key,
+    ...groups[key]
+  })).slice(-15);
+}
