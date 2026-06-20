@@ -1678,7 +1678,7 @@ const chartCategoryData = useMemo(() => {
                 <span className="text-3xl font-black text-slate-900 tracking-tight">{recolhimentoMetrics.totalAttempts}</span>
               </div>
               <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm ring-1 ring-emerald-500/10">
-                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block mb-1">Efetividade Capex</span>
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest font-mono block mb-1">Efetividade Recolhimentos</span>
                 <span className="text-3xl font-black text-emerald-600 tracking-tight">{recolhimentoMetrics.retrievalEffectiveness.toFixed(1)}%</span>
               </div>
               <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm ring-1 ring-amber-500/10">
