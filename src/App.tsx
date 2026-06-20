@@ -703,14 +703,14 @@ const handleImportAuditRecords = async () => {
   const schedulingAdherenceMetrics = useMemo(() => {
     return calculateSchedulingAdherenceMetrics(filteredDemands);
   }, [filteredDemands]);
-  const auditDashboardMetrics = useMemo(() => {
+const auditDashboardMetrics = useMemo(() => {
   return calculateAuditDashboardMetrics(
-    groupedProtocols,
+    dataState.demands,
     auditRecords,
     auditFilters.date_start,
     auditFilters.date_end
   );
-}, [groupedProtocols, auditRecords, auditFilters.date_start, auditFilters.date_end]);
+}, [dataState.demands, auditRecords, auditFilters.date_start, auditFilters.date_end]);
   const auditIndicators = useMemo(() => {
   return calculateAuditIndicators(auditRecords);
 }, [auditRecords]);
