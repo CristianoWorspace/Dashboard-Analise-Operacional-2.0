@@ -705,12 +705,12 @@ const handleImportAuditRecords = async () => {
   }, [filteredDemands]);
 const auditDashboardMetrics = useMemo(() => {
   return calculateAuditDashboardMetrics(
-    dataState.demands,
+    groupedProtocols,
     auditRecords,
     auditFilters.date_start,
     auditFilters.date_end
   );
-}, [dataState.demands, auditRecords, auditFilters.date_start, auditFilters.date_end]);
+}, [groupedProtocols, auditRecords, auditFilters.date_start, auditFilters.date_end]);
   const auditIndicators = useMemo(() => {
   return calculateAuditIndicators(auditRecords);
 }, [auditRecords]);
