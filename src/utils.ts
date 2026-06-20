@@ -311,7 +311,7 @@ export function calculateRecolhimentoMetrics(demands: RawDemand[]): Recolhimento
  * Eficiência Operacional: concluídas com deslocamento / total com deslocamento.
  */
 export function calculateOperationalEfficiencyMetrics(demands: RawDemand[]): OperationalEfficiencyMetrics {
-  const displacementDemands = demands.filter(d => d.nivel === "com_deslocamento");
+  const displacementDemands = demands.filter(isEffectivelyWithDisplacement);
   const total = displacementDemands.length;
   const completed = displacementDemands.filter(d => isStatusCompleted(d.status)).length;
   const efficiency = total > 0 ? (completed / total) * 100 : 0;
