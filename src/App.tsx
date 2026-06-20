@@ -1691,65 +1691,75 @@ const chartCategoryData = useMemo(() => {
               </div>
             </div>
 
-            <div className="grid grid-cols-12 gap-6">
-              
-              {/* Funnel chart simulated / Reasons for loss (COL-8) */}
-              <div className="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-                <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-1.5 border-b border-slate-100 pb-3">
-                  ⚠️ Análise de Perda de Equipamento (Não Recuperados)
-                </h4>
-                
-                <div className="h-[280px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={[
-                        { name: "Cobrança Financeira", value: recolhimentoMetrics.sentToBilling, fill: "#F59E0B" },
-                        { name: "Cliente Ausente", value: recolhimentoMetrics.clientAusente, fill: "#6366F1" },
-                        { name: "Equipe Não Compareceu", value: recolhimentoMetrics.teamDidNotGo, fill: "#EF4444" },
-                        { name: "Cliente Recusou Devolver", value: recolhimentoMetrics.clientRefused, fill: "#475569" }
-                      ].sort((a, b) => b.value - a.value)}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                      <XAxis dataKey="name" stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
-                      <YAxis stroke="#94a3b8" fontSize={9} tickLine={false} axisLine={false} />
-                      <Tooltip 
-                        cursor={{ fill: '#f8fafc' }}
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      />
-                      <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+   <div className="grid grid-cols-12 gap-6">
+  
+  {/* Gráfico de motivos: Reagendados + Não Realizados (COL-8) */}
+  <div className="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+    <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-1.5 border-b border-slate-100 pb-3">
+      ⚠️ Motivos de Reagendamento / Não Realização
+    </h4>
+    
+    {recolhimentoMetrics.reasonBreakdown.length === 0 ? (
+      <div className="py-12 text-center text-slate-400 font-mono text-xs">
+        Nenhum motivo registrado no escopo selecionado.
+      </div>
+    ) : (
+      <div className="h-[280px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={recolhimentoMetrics.reasonBreakdown.slice(0, 8)}
+            layout="vertical"
+            margin={{ top: 10, right: 30, left: 160, bottom: 5 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+            <XAxis type="number" stroke="#94a3b8" fontSize={9} />
+            <YAxis 
+              dataKey="reason" 
+              type="category" 
+              stroke="#475569" 
+              fontSize={9} 
+              tickLine={false} 
+              width={160}
+            />
+            <Tooltip 
+              cursor={{ fill: '#f8fafc' }}
+              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              formatter={(value) => `${value} ocorrências`}
+            />
+            <Bar dataKey="count" fill="#F59E0B" radius={[0, 6, 6, 0]} barSize={20} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    )}
+  </div>
 
-              {/* Loss breakdown summary (COL-4) */}
-              <div className="col-span-12 lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
-                <div>
-                  <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-3">
-                    📉 Impacto de Faturamento
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
-                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Encaminhado para Multa</span>
-                      <span className="text-2xl font-black text-amber-700">{recolhimentoMetrics.sentToBilling} Unidades</span>
-                      <p className="text-[10px] text-amber-800 mt-2 leading-relaxed">Equipamentos que não foram recuperados e já possuem justificativa para lançamento de multa contratual no próximo ciclo.</p>
-                    </div>
+  {/* Impacto de Faturamento (COL-4) */}
+  <div className="col-span-12 lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+    <div>
+      <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-4 border-b border-slate-100 pb-3">
+        📉 Impacto de Faturamento
+      </h4>
+      <div className="space-y-4">
+        <div className="p-4 rounded-xl bg-amber-50 border border-amber-100">
+          <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block mb-1">Encaminhado para Cobrança</span>
+          <span className="text-2xl font-black text-amber-700">{recolhimentoMetrics.sentToBilling} Unidades</span>
+          <p className="text-[10px] text-amber-800 mt-2 leading-relaxed">Equipamentos não recuperados, encaminhados para cobrança conforme motivo registrado.</p>
+        </div>
 
-                    <div className="p-4 rounded-xl bg-rose-50 border border-rose-100">
-                      <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block mb-1">Perda por Falha Operacional</span>
-                      <span className="text-2xl font-black text-rose-700">{recolhimentoMetrics.teamDidNotGo} Unidades</span>
-                      <p className="text-[10px] text-rose-800 mt-2 leading-relaxed">Equipamentos não recolhidos porque a equipe técnica não compareceu ao local agendado no dia.</p>
-                    </div>
-                  </div>
-                </div>
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block mb-1">Total Recolhidos</span>
+          <span className="text-2xl font-black text-emerald-700">{recolhimentoMetrics.effectiveRetrievals} Unidades</span>
+          <p className="text-[10px] text-emerald-800 mt-2 leading-relaxed">Equipamentos efetivamente recolhidos (status Concluído).</p>
+        </div>
+      </div>
+    </div>
 
-                <div className="text-[10px] text-slate-400 font-mono text-center pt-2 border-t border-slate-100 mt-4">
-                  Meta Empresarial de Perda de Capex: &lt; 15%
-                </div>
-              </div>
+    <div className="text-[10px] text-slate-400 font-mono text-center pt-2 border-t border-slate-100 mt-4">
+      Meta Empresarial de Perda de Capex: &lt; 15%
+    </div>
+  </div>
 
-            </div>
+</div>
 
           </div>
         )}
