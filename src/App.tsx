@@ -462,22 +462,16 @@ const handleSaveAuditRecord = async (e: React.FormEvent) => {
     city: "all"
   });
 
-  // Load spreadsheet data from the backend proxy
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const queryParams = new URLSearchParams();
-      if (filters.startDate) queryParams.append("schedule_date_start", filters.startDate);
-      if (filters.endDate) queryParams.append("schedule_date_end", filters.endDate);
-      if (filters.technician !== "all") queryParams.append("name", filters.technician);
-      if (filters.status !== "all") queryParams.append("status", filters.status);
-      if (filters.category !== "all") queryParams.append("TipoOS_category", filters.category); // Using a custom filter for category
-      if (filters.displacementLevel !== "all") queryParams.append("nivel", filters.displacementLevel);
-      if (filters.reason !== "all") queryParams.append("reason", filters.reason);
-      if (filters.city !== "all") queryParams.append("city", filters.city);
-
-      const response = await fetch(`/api/data?${queryParams.toString()}`);
-      const result = await response.json();
+ // Load spreadsheet data from the backend proxy.
+// IMPORTANTE: não enviamos mais os filtros (data, técnico, status, etc) na query —
+// buscamos o dataset completo UMA VEZ e todo o filtro acontece no client (filteredDemands).
+// Isso evita refazer a consulta lenta ao Google Sheets a cada mudança de filtro,
+// já que os dados da planilha só são atualizados ~1x por semana.
+const fetchData = async () => {
+  setLoading(true);
+  try {
+    const response = await fetch(`/api/data`);
+    const result = await response.json();
       
       let rawData = result.data || [];
       let rowsToProcess: any[] = [];
