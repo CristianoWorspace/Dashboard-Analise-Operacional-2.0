@@ -1078,6 +1078,17 @@ const chartCategoryData = useMemo(() => {
 
               {/* Secure Log-Out button */}
               <button
+                onClick={() => {
+                  setChangePasswordForm({ current: "", new: "", confirm: "" });
+                  setChangePasswordError("");
+                  setShowChangePassword(true);
+                }}
+                className="p-2 text-slate-400 hover:text-indigo-400 bg-white/5 hover:bg-indigo-500/10 rounded-xl cursor-pointer transition"
+                title="Alterar Senha"
+              >
+                <Lock className="w-4 h-4" />
+              </button>
+              <button
                 onClick={handleLogout}
                 className="p-2 text-slate-400 hover:text-rose-400 bg-white/5 hover:bg-rose-500/10 rounded-xl cursor-pointer transition"
                 title="Sair do Painel"
