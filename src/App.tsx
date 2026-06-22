@@ -1212,23 +1212,21 @@ const chartCategoryData = useMemo(() => {
               </div>
 
               {/* Filter: City */}
-              <div>
-                <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
-                  🏙️ Cidade
-                </label>
-                <select
-                  value={filters.city}
-                  onChange={(e) => setFilters(p => ({ ...p, city: e.target.value }))}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
-                >
-                  <option value="all">Todas as Cidades</option>
-                  {/* You'll need to populate this dynamically from your data if cities are not fixed */}
-                  {/* For now, adding a placeholder. You might need to extract unique cities from your dataState.demands */}
-                  <option value="Gramado">Gramado</option>
-                  <option value="Canela">Canela</option>
-                  <option value="Nova Petrópolis">Nova Petrópolis</option>
-                </select>
-              </div>
+<div>
+  <label className="block text-[10px] font-bold font-mono text-slate-400 uppercase tracking-widest mb-1.5">
+    🏙️ Cidade
+  </label>
+  <select
+    value={filters.city}
+    onChange={(e) => setFilters(p => ({ ...p, city: e.target.value }))}
+    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg bg-slate-50 text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition cursor-pointer"
+  >
+    <option value="all">Todas as Cidades</option>
+    {cityList.map((city, i) => (
+      <option key={i} value={city}>{city}</option>
+    ))}
+  </select>
+</div>
 
             </div>
 
