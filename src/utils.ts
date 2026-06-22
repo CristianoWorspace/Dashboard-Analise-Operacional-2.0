@@ -155,17 +155,30 @@ export function parseSheetRow(row: any, index: number): RawDemand {
 
 /**
  * Parses a date string into a Date object.
+ * IMPORTANTE: tenta primeiro o formato dd/mm/yyyy (usado internamente após parseSheetRow),
+ * porque new Date(string) interpreta "11/06/2026" como mm/dd/yyyy (formato americano),
+ * o que troca o dia 11 de junho por 6 de novembro silenciosamente.
+ * Só cai no construtor nativo Date como fallback para outros formatos (ex: ISO).
  */
 export function parseDate(dateString: string): Date | null {
   if (!dateString) return null;
+
+  // Tenta primeiro dd/mm/yyyy (ou dd/mm/yy)
+  const parts = dateString.split("/");
+  if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      const d = new Date(year, month - 1, day);
+      if (!isNaN(d.getTime())) return d;
+    }
+  }
+
+  // Fallback: outros formatos (ISO, etc.)
   const date = new Date(dateString);
   if (!isNaN(date.getTime())) return date;
 
-  const parts = dateString.split("/");
-  if (parts.length === 3) {
-    const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-    if (!isNaN(d.getTime())) return d;
-  }
   return null;
 }
 
