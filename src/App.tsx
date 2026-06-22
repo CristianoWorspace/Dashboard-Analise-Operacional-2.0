@@ -2723,7 +2723,116 @@ const chartCategoryData = useMemo(() => {
           </div>
         </div>
         )}
+        {/* MODAL: TROCA DE SENHA */}
+        {showChangePassword && (
+          <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 backdrop-blur-md bg-slate-900/60">
+            <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 overflow-hidden">
+              
+              {/* Header */}
+              <div className="bg-gradient-to-br from-indigo-600 to-violet-600 text-white p-6">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <h3 className="text-lg font-bold font-display tracking-tight">
+                    {currentUser?.primeiro_acesso ? "Primeiro Acesso" : "Alterar Senha"}
+                  </h3>
+                </div>
+                <p className="text-xs text-indigo-200 mt-1 ml-11">
+                  {currentUser?.primeiro_acesso
+                    ? "Por segurança, defina uma senha pessoal antes de continuar."
+                    : "Informe sua senha atual e escolha uma nova senha."}
+                </p>
+              </div>
 
+              {/* Form */}
+              <div className="p-6">
+                {changePasswordError && (
+                  <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 flex gap-2 text-rose-700 text-xs items-start">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{changePasswordError}</span>
+                  </div>
+                )}
+                {changePasswordSuccess && (
+                  <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex gap-2 text-emerald-700 text-xs items-start">
+                    <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{changePasswordSuccess}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleChangePassword} className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 font-mono">
+                      Senha Atual (Provisória)
+                    </label>
+                    <input
+                      type="password"
+                      value={changePasswordForm.current}
+                      onChange={e => setChangePasswordForm(p => ({ ...p, current: e.target.value }))}
+                      className="w-full px-3 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-indigo-500 transition"
+                      placeholder="Senha que o administrador forneceu"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 font-mono">
+                      Nova Senha
+                    </label>
+                    <input
+                      type="password"
+                      value={changePasswordForm.new}
+                      onChange={e => setChangePasswordForm(p => ({ ...p, new: e.target.value }))}
+                      className="w-full px-3 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-indigo-500 transition"
+                      placeholder="Mínimo 6 caracteres"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 font-mono">
+                      Confirmar Nova Senha
+                    </label>
+                    <input
+                      type="password"
+                      value={changePasswordForm.confirm}
+                      onChange={e => setChangePasswordForm(p => ({ ...p, confirm: e.target.value }))}
+                      className="w-full px-3 py-2.5 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-none focus:border-indigo-500 transition"
+                      placeholder="Repita a nova senha"
+                      required
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="submit"
+                      disabled={isChangingPassword}
+                      className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs transition disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      {isChangingPassword ? (
+                        <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Salvando...</span></>
+                      ) : (
+                        <span>Confirmar Nova Senha</span>
+                      )}
+                    </button>
+                    {/* Só permite fechar se NÃO for primeiro acesso */}
+                    {!currentUser?.primeiro_acesso && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowChangePassword(false);
+                          setChangePasswordError("");
+                          setChangePasswordForm({ current: "", new: "", confirm: "" });
+                        }}
+                        className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )}
         {/* MODAL: RECORD DRILL-DOWN (EXECUTIVE DETAIL VIEW) */}
         {selectedRecord && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 backdrop-blur-md bg-slate-900/40">
