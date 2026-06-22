@@ -366,32 +366,57 @@ const paginatedAuditDemands = auditDemands.slice(
 const totalAuditPages = Math.ceil(
   auditDemands.length / auditItemsPerPage
 );
-const fetchAuditRecords = async () => {
-  setFetchingAuditRecords(true);
-  try {
-    const queryParams = new URLSearchParams();
-    if (auditFilters.date_start) queryParams.append("date_start", auditFilters.date_start);
-    if (auditFilters.date_end) queryParams.append("date_end", auditFilters.date_end);
-    if (auditFilters.protocol) queryParams.append("protocol", auditFilters.protocol);
-    if (auditFilters.triedToConfirm !== "all") queryParams.append("triedToConfirm", auditFilters.triedToConfirm);
-    if (auditFilters.clientConfirmed !== "all") queryParams.append("clientConfirmed", auditFilters.clientConfirmed);
-    if (auditFilters.schedulingError !== "all") queryParams.append("schedulingError", auditFilters.schedulingError);
-    if (auditFilters.whoErrored !== "all") queryParams.append("whoErrored", auditFilters.whoErrored);
-    if (auditFilters.errorReason !== "all") queryParams.append("errorReason", auditFilters.errorReason);
-    const response = await fetch(`/api/audit?${queryParams.toString()}`);
-    const result = await response.json();
-    if (result.success) {
-      setAuditRecords(result.records || []);
-    } else {
-      setAuditError(result.message || "Erro ao carregar registros de auditoria.");
+  const fetchAuditRecords = async () => {
+    setFetchingAuditRecords(true);
+    try {
+      const queryParams = new URLSearchParams();
+      if (auditFilters.date_start) queryParams.append("date_start", auditFilters.date_start);
+      if (auditFilters.date_end) queryParams.append("date_end", auditFilters.date_end);
+      if (auditFilters.protocol) queryParams.append("protocol", auditFilters.protocol);
+      if (auditFilters.triedToConfirm !== "all") queryParams.append("triedToConfirm", auditFilters.triedToConfirm);
+      if (auditFilters.clientConfirmed !== "all") queryParams.append("clientConfirmed", auditFilters.clientConfirmed);
+      if (auditFilters.schedulingError !== "all") queryParams.append("schedulingError", auditFilters.schedulingError);
+      if (auditFilters.whoErrored !== "all") queryParams.append("whoErrored", auditFilters.whoErrored);
+      if (auditFilters.errorReason !== "all") queryParams.append("errorReason", auditFilters.errorReason);
+
+      const response = await fetch(`/api/audit?${queryParams.toString()}`);
+      const result = await response.json();
+
+      if (result.success) {
+        const allRows = result.records || [];
+        
+        // 1. Atualiza auditRecords (apenas os já auditados para os gráficos)
+        const completed = allRows.filter((r: any) => r.triedToConfirm && r.triedToConfirm !== "");
+        setAuditRecords(completed);
+
+        // 2. Atualiza auditDemands (os que estão na planilha mas SEM auditoria preenchida)
+        const pending = allRows
+          .filter((r: any) => !r.triedToConfirm || r.triedToConfirm === "")
+          .map((r: any) => ({
+            date: r.date || "",
+            protocol_number: r.protocol || "",
+            status: r.status || "Reagendado",
+            reason: r.reason || "Pendente",
+            demand: r.tipo_os || r.demand || "",
+            technician: r.technician || "",
+            city: r.city || "",
+            category: "Suporte",
+            client: r.protocol ? `Protocolo: #${r.protocol}` : "",
+            nivel: "com_deslocamento",
+            grupos: "",
+            raw: r
+          }));
+        setAuditDemands(pending);
+      } else {
+        setAuditError(result.message || "Erro ao carregar registros de auditoria.");
+      }
+    } catch (err) {
+      console.error("Failed to fetch audit records:", err);
+      setAuditError("Erro de comunicação ao carregar auditorias.");
+    } finally {
+      setFetchingAuditRecords(false);
     }
-  } catch (err) {
-    console.error("Failed to fetch audit records:", err);
-    setAuditError("Erro de comunicação ao carregar auditorias.");
-  } finally {
-    setFetchingAuditRecords(false);
-  }
-};
+  };
 useEffect(() => {
   if (activeTab === "auditoria") {
     fetchAuditRecords();
