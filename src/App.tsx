@@ -545,9 +545,9 @@ const handleImportAuditRecords = async () => {
     alert("Erro ao chamar API.");
   }
 };
-  useEffect(() => {
-    fetchData();
-  }, [filters]); // Re-fetch data when filters change
+useEffect(() => {
+  fetchData();
+}, []); // Busca uma única vez ao carregar — filtros são aplicados no client
 
   // Quick helper to reset all filter values
   const handleClearFilters = () => {
