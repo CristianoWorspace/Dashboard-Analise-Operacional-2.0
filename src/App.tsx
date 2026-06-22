@@ -385,27 +385,42 @@ const totalAuditPages = Math.ceil(
       if (result.success) {
         const allRows = result.records || [];
         
-        // 1. Atualiza auditRecords (apenas os já auditados para os gráficos)
+        // 1. Filtra apenas os já auditados para os indicadores/gráficos
         const completed = allRows.filter((r: any) => r.triedToConfirm && r.triedToConfirm !== "");
         setAuditRecords(completed);
 
-        // 2. Atualiza auditDemands (os que estão na planilha mas SEM auditoria preenchida)
+        // 2. Filtra os que estão na planilha mas ainda não foram auditados para a tabela
         const pending = allRows
           .filter((r: any) => !r.triedToConfirm || r.triedToConfirm === "")
-          .map((r: any) => ({
-            date: r.date || "",
-            protocol_number: r.protocol || "",
-            status: r.status || "Reagendado",
-            reason: r.reason || "Pendente",
-            demand: r.tipo_os || r.demand || "",
-            technician: r.technician || "",
-            city: r.city || "",
-            category: "Suporte",
-            client: r.protocol ? `Protocolo: #${r.protocol}` : "",
-            nivel: "com_deslocamento",
-            grupos: "",
-            raw: r
-          }));
+          .map((r: any) => {
+            // --- CORREÇÃO DE DATA (TIMEZONE) ---
+            const rawDate = r.date || "";
+            const dateObj = parseDate(rawDate);
+            let dateFormatted = rawDate;
+            
+            if (dateObj) {
+              const isIso = rawDate.includes("T") || (rawDate.includes("-") && rawDate.length >= 10);
+              const day = String(isIso ? dateObj.getUTCDate() : dateObj.getDate()).padStart(2, "0");
+              const month = String(isIso ? (dateObj.getUTCMonth() + 1) : (dateObj.getMonth() + 1)).padStart(2, "0");
+              const year = isIso ? dateObj.getUTCFullYear() : dateObj.getFullYear();
+              dateFormatted = `${day}/${month}/${year}`;
+            }
+
+            return {
+              date: dateFormatted,
+              protocol_number: r.protocol || "",
+              status: r.status || "Reagendado",
+              reason: r.reason || "Pendente",
+              demand: r.tipo_os || r.demand || "",
+              technician: r.technician || "",
+              city: r.city || "",
+              category: "Suporte",
+              client: r.protocol ? `Protocolo: #${r.protocol}` : "",
+              nivel: "com_deslocamento",
+              grupos: "",
+              raw: r
+            };
+          });
         setAuditDemands(pending);
       } else {
         setAuditError(result.message || "Erro ao carregar registros de auditoria.");
