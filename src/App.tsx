@@ -618,26 +618,34 @@ setCityList(uniqueCities);
       setLoading(false);
     }
   };
-const handleImportAuditRecords = async () => {
-  try {
-    const response = await fetch("/api/audit", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        action: "importAuditRecords",
-      }),
-    });
+  const handleImportAuditRecords = async () => {
+    try {
+      setAuditError("");
+      setAuditSuccess("");
+      const response = await fetch("/api/audit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          action: "importAuditRecords",
+        }),
+      });
 
-    const result = await response.json();
+      const result = await response.json();
 
-    alert(result.message || "Requisição enviada.");
-  } catch (err: any) {
-    console.error(err);
-    alert("Erro ao chamar API.");
-  }
-};
+      if (result.success) {
+        setAuditSuccess(result.message || "Protocolos importados com sucesso!");
+        // ✅ RECARREGA OS DADOS NA TELA IMEDIATAMENTE APÓS IMPORTAR
+        fetchAuditRecords(); 
+      } else {
+        setAuditError(result.message || "Erro ao importar protocolos.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setAuditError("Erro de comunicação ao chamar API de importação.");
+    }
+  };
 useEffect(() => {
   fetchData();
 }, []); // Busca uma única vez ao carregar — filtros são aplicados no client
