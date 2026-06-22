@@ -507,7 +507,15 @@ const fetchData = async () => {
         )
       ).sort();
       setTechnicianList(uniqueTechs);
-
+// Set unique cities list
+const uniqueCities: string[] = Array.from(
+  new Set(
+    parsedRows
+      .map(d => d.city)
+      .filter(c => c && c.trim() !== "")
+  )
+).sort();
+setCityList(uniqueCities);
       setDataState({
         success: result.success,
         source: result.source,
