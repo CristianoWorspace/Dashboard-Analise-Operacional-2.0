@@ -469,6 +469,42 @@ const handleSaveAuditRecord = async (e: React.FormEvent) => {
       setChangePasswordError("A nova senha deve ter pelo menos 6 caracteres.");
       return;
     }
+
+    setIsChangingPassword(true);
+    try {
+      const response = await fetch("/api/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: currentUser?.username,
+          currentPassword: changePasswordForm.current,
+          newPassword: changePasswordForm.new,
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setChangePasswordSuccess("Senha alterada com sucesso!");
+        setChangePasswordForm({ current: "", new: "", confirm: "" });
+
+        // Atualiza localStorage removendo flag de primeiro acesso
+        const updatedUser = { ...currentUser, primeiro_acesso: false };
+        localStorage.setItem("dashboard_user", JSON.stringify(updatedUser));
+        setCurrentUser(updatedUser as any);
+
+        // Fecha modal após 1.5s
+        setTimeout(() => {
+          setShowChangePassword(false);
+          setChangePasswordSuccess("");
+        }, 1500);
+      } else {
+        setChangePasswordError(result.message || "Erro ao alterar senha.");
+      }
+    } catch (err) {
+      setChangePasswordError("Erro de comunicação com o servidor.");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
   const handleLogout = () => {
     localStorage.removeItem("dashboard_user");
     setCurrentUser(null);
