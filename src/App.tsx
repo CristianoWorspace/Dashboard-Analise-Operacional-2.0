@@ -2395,18 +2395,27 @@ const chartCategoryData = useMemo(() => {
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
           <button
-            onClick={() => {
-              setSelectedAuditDemand(demand);
-              setAuditForm({
-                date: demand.date,
-                protocol: demand.protocol_number,
-                triedToConfirm: "",
-                clientConfirmed: "",
-                schedulingError: "",
-                whoErrored: "",
-                errorReason: "",
-              });
-            }}
+onClick={() => {
+  setSelectedAuditDemand(demand);
+
+  // Converte dd/MM/yyyy → yyyy-MM-dd para salvar corretamente no Sheet
+  const toIsoDate = (d: string): string => {
+    if (!d) return '';
+    const parts = d.split('/');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    return d;
+  };
+
+  setAuditForm({
+    date: toIsoDate(demand.date),
+    protocol: demand.protocol_number,
+    triedToConfirm: "",
+    clientConfirmed: "",
+    schedulingError: "",
+    whoErrored: "",
+    errorReason: "",
+  });
+}}           
             className="text-indigo-600 hover:text-indigo-900 text-xs font-semibold"
           >
             Auditar
