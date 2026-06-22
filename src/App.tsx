@@ -100,6 +100,12 @@ export default function App() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string>("");
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
+  // Estados para troca de senha obrigatória
+  const [showChangePassword, setShowChangePassword] = useState<boolean>(false);
+  const [changePasswordForm, setChangePasswordForm] = useState({ current: "", new: "", confirm: "" });
+  const [changePasswordError, setChangePasswordError] = useState<string>("");
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState<string>("");
+  const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
 
 const handleLogin = async (e: React.FormEvent) => {
   e.preventDefault();
