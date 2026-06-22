@@ -734,20 +734,62 @@ useEffect(() => {
   }, [baseDemands, filters, searchQuery]);
 
   // Audit Demands filtering logic
- useEffect(() => {
-  if (activeTab === "auditoria") {
-    const auditedProtocols = new Set(auditRecords.map(r => r.protocol));
+useEffect(() => {
+  if (activeTab !== "auditoria") return;
 
-    const filtered = filteredDemands.filter(demand => {
-      const isReagendado = isStatusRescheduled(demand.status);
-      const isComDeslocamento = demand.nivel === "com_deslocamento";
-      const jaAuditado = auditedProtocols.has(demand.protocol_number);
+  const auditedProtocols = new Set(auditRecords.map(r => r.protocol));
 
-      return isReagendado && isComDeslocamento && !jaAuditado;
-    });
-    setAuditDemands(filtered);
-  }
-}, [filteredDemands, activeTab, auditRecords]);
+  const motivosPermitidos = [
+    'cliente solicitou reagendamento',
+    'não pode acompanhar',
+    'cliente não estava',
+    'sem contato com cliente'
+  ];
+
+  const tiposExcluidos = [
+    'brqa - não retido', 'cancelamento', 'recolhimento',
+    'engenharia', 'infraestrutura', 'entrega de carnê',
+    'instalação evento', 'viabilidade'
+  ];
+
+  // ✅ Usa dataState.demands (dataset COMPLETO, sem filtros gerais)
+  const filtered = dataState.demands.filter(demand => {
+    if (!isStatusRescheduled(demand.status)) return false;
+    if (demand.nivel !== 'com_deslocamento') return false;
+    if (auditedProtocols.has(demand.protocol_number)) return false;
+
+    const reason = (demand.reason || '').toLowerCase();
+    const motivoOk = motivosPermitidos.some(m => reason.includes(m));
+    if (!motivoOk) return false;
+
+    const tipoOs = (demand.tipo_os || demand.demand || '').toLowerCase();
+    const tipoExcluido = tiposExcluidos.some(t => tipoOs.includes(t));
+    if (tipoExcluido) return false;
+
+    return true;
+  });
+
+  // Aplica filtros próprios da auditoria (data e protocolo)
+  const finalFiltered = filtered.filter(demand => {
+    if (auditFilters.date_start) {
+      const itemDate = new Date(demand.date);
+      const start = new Date(auditFilters.date_start);
+      if (itemDate < start) return false;
+    }
+    if (auditFilters.date_end) {
+      const itemDate = new Date(demand.date);
+      const end = new Date(auditFilters.date_end);
+      end.setHours(23, 59, 59, 999);
+      if (itemDate > end) return false;
+    }
+    if (auditFilters.protocol) {
+      if (!demand.protocol_number?.includes(auditFilters.protocol)) return false;
+    }
+    return true;
+  });
+
+  setAuditDemands(finalFiltered);
+}, [dataState.demands, activeTab, auditRecords, auditFilters]);
 
   // Compute stats dynamically based on current filtered dataset
   const generalMetrics = useMemo(() => {
