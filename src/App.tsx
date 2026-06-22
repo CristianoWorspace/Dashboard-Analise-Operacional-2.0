@@ -134,6 +134,11 @@ const handleLogin = async (e: React.FormEvent) => {
 
       setCurrentUser(result.user);
 
+      // Se for primeiro acesso, abre modal de troca obrigatória
+      if (result.user.primeiro_acesso === true) {
+        setShowChangePassword(true);
+      }
+
       setUsernameInput("");
       setPasswordInput("");
     } else {
