@@ -456,7 +456,19 @@ const handleSaveAuditRecord = async (e: React.FormEvent) => {
       setFetchingUsers(false);
     }
   };
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePasswordError("");
+    setChangePasswordSuccess("");
 
+    if (changePasswordForm.new !== changePasswordForm.confirm) {
+      setChangePasswordError("A nova senha e a confirmação não coincidem.");
+      return;
+    }
+    if (changePasswordForm.new.trim().length < 6) {
+      setChangePasswordError("A nova senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
   const handleLogout = () => {
     localStorage.removeItem("dashboard_user");
     setCurrentUser(null);
