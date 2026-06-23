@@ -625,3 +625,24 @@ export function calculateSchedulingTrendData(demands: RawDemand[]): SchedulingTr
     ...groups[key]
   })).slice(-15);
 }
+/**
+ * Exibe uma data string de forma segura, sem perda de fuso.
+ * Aceita ISO (yyyy-MM-dd) ou dd/MM/yyyy — sempre retorna dd/MM/yyyy.
+ */
+export function formatDateSafe(dateStr: string): string {
+  if (!dateStr) return '';
+
+  // Já está em dd/MM/yyyy
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) return dateStr;
+
+  // ISO yyyy-MM-dd — usa UTC para evitar virada de dia
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  // Fallback
+  const d = parseDate(dateStr);
+  if (!d) return dateStr;
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+}
