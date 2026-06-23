@@ -2380,7 +2380,7 @@ const chartCategoryData = useMemo(() => {
   ) : (
     paginatedAuditDemands.map((demand, index) => (
       <tr key={index}>
-        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{demand.date}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{formatDateSafe(demand.date)}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">#{demand.protocol_number || "S/P"}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{demand.status}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 max-w-[220px] truncate" title={demand.reason}>
