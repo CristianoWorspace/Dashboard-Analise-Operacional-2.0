@@ -55,7 +55,8 @@ import {
   Line
 } from "recharts";
 import { 
-  parseSheetRow, 
+  parseSheetRow,
+  formatDateSafe,
   calculateGeneralMetrics, 
   calculateRecolhimentoMetrics, 
   calculateOperationalEfficiencyMetrics,
