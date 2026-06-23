@@ -385,37 +385,38 @@ const totalAuditPages = Math.ceil(
       if (result.success) {
         const allRows = result.records || [];
         
-        // 1. Filtra apenas os já auditados para os indicadores/gráficos
+        // 1. Atualiza auditRecords (apenas os já auditados para os gráficos)
         const completed = allRows.filter((r: any) => r.triedToConfirm && r.triedToConfirm !== "");
         setAuditRecords(completed);
 
-        // 2. Filtra os que estão na planilha mas ainda não foram auditados para a tabela
+        // 2. Atualiza auditDemands (os que estão na planilha mas SEM auditoria preenchida)
         const pending = allRows
           .filter((r: any) => !r.triedToConfirm || r.triedToConfirm === "")
           .map((r: any) => {
-            // --- CORREÇÃO DE DATA (TIMEZONE) ---
-            const rawDate = r.date || "";
-            const dateObj = parseDate(rawDate);
-            let dateFormatted = rawDate;
-            
-            if (dateObj) {
-              const isIso = rawDate.includes("T") || (rawDate.includes("-") && rawDate.length >= 10);
-              const day = String(isIso ? dateObj.getUTCDate() : dateObj.getDate()).padStart(2, "0");
-              const month = String(isIso ? (dateObj.getUTCMonth() + 1) : (dateObj.getMonth() + 1)).padStart(2, "0");
-              const year = isIso ? dateObj.getUTCFullYear() : dateObj.getFullYear();
-              dateFormatted = `${day}/${month}/${year}`;
+            const rawDate = r.date || r.data || "";
+            let dateDisplay = rawDate;
+
+            // Tratamento de fuso horário para datas ISO
+            if (rawDate && (rawDate.includes("-") || rawDate.includes("T"))) {
+              const dateObj = parseDate(rawDate);
+              if (dateObj) {
+                const day = String(rawDate.includes("T") ? dateObj.getUTCDate() : dateObj.getDate()).padStart(2, "0");
+                const month = String(rawDate.includes("T") ? (dateObj.getUTCMonth() + 1) : (dateObj.getMonth() + 1)).padStart(2, "0");
+                const year = rawDate.includes("T") ? dateObj.getUTCFullYear() : dateObj.getFullYear();
+                dateDisplay = `${day}/${month}/${year}`;
+              }
             }
 
             return {
-              date: dateFormatted,
-              protocol_number: r.protocol || "",
+              date: dateDisplay,
+              protocol_number: r.protocol || r.protocolo || "",
               status: r.status || "Reagendado",
-              reason: r.reason || "Pendente",
-              demand: r.tipo_os || r.demand || "",
-              technician: r.technician || "",
-              city: r.city || "",
+              reason: r.reason || r.motivo || "Pendente",
+              demand: r.tipo_os || r.demand || r.demanda || "",
+              technician: r.technician || r.tecnico || "",
+              city: r.city || r.cidade || "",
               category: "Suporte",
-              client: r.protocol ? `Protocolo: #${r.protocol}` : "",
+              client: (r.protocol || r.protocolo) ? `Protocolo: #${r.protocol || r.protocolo}` : "",
               nivel: "com_deslocamento",
               grupos: "",
               raw: r
