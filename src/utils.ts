@@ -226,9 +226,25 @@ export function calculateGeneralMetrics(demands: RawDemand[]): GeneralMetrics {
   let totalInfraestrutura = 0;
   let totalRecolhimentos = 0;
   let totalEntregaCarne = 0;
+  let totalInstalacoes = 0;
+  let completedInstalacoes = 0;
 
   demands.forEach(d => {
     const isCompleted = isStatusCompleted(d.status);
+    const demandLower = (d.demand || "").toLowerCase();
+
+    // Conta instalações independente de categoria
+    const isInstalacao =
+      demandLower.includes("instalação fibra") ||
+      demandLower.includes("instalacao fibra") ||
+      demandLower.includes("instalação rádio") ||
+      demandLower.includes("instalacao radio");
+
+    if (isInstalacao) {
+      totalInstalacoes++;
+      if (isCompleted) completedInstalacoes++;
+    }
+
     switch (d.category) {
       case "Suporte":
         totalSuporte++;
@@ -255,11 +271,13 @@ export function calculateGeneralMetrics(demands: RawDemand[]): GeneralMetrics {
 
   return {
     totalDemands, totalCompleted, schedulingEfficiency,
-    completedSuporte, completedAtivacoes, completedInfraestrutura, completedRecolhimentos, completedEntregaCarne,
-    totalSuporte, totalAtivacoes, totalInfraestrutura, totalRecolhimentos, totalEntregaCarne
+    completedSuporte, completedAtivacoes, completedInfraestrutura,
+    completedRecolhimentos, completedEntregaCarne,
+    totalSuporte, totalAtivacoes, totalInfraestrutura,
+    totalRecolhimentos, totalEntregaCarne,
+    totalInstalacoes, completedInstalacoes
   };
 }
-
 /**
  * Calcula métricas do dashboard de Recolhimentos.
  * Base: categoria "Recolhimentos" (tipo_os contém "Recolhimento" e/ou "Cancelamento"), SEM deduplicação.
