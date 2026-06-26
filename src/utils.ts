@@ -527,27 +527,21 @@ export function calculateDisplacementEfficiencyMetrics(demands: RawDemand[], tec
   // Caso 1: técnico específico selecionado
   if (technicianName && technicianName !== "all") {
     const techDemands = suporteDemands.filter(d => d.technician === technicianName);
-    const totalDemandsWithDisplacement = techDemands.length;
-    const completedDemandsWithDisplacement = techDemands.filter(d => isStatusCompleted(d.status)).length;
-
-    const uniqueDates = new Set<string>();
-    techDemands.forEach(d => {
-      if (isStatusCompleted(d.status)) uniqueDates.add(d.date);
-    });
-    const uniqueDaysWithDisplacement = uniqueDates.size;
-
-    const avgCompletedDisplacementPerDay = uniqueDaysWithDisplacement > 0
-      ? completedDemandsWithDisplacement / uniqueDaysWithDisplacement
-      : 0;
-
-    return {
-      totalDemandsWithDisplacement,
-      completedDemandsWithDisplacement,
-      uniqueDaysWithDisplacement,
-      avgCompletedDisplacementPerDay,
-      technicianName
-    };
-  }
+const uniqueDates = new Set<string>();
+techDemands.forEach(d => {
+  if (isStatusCompleted(d.status)) uniqueDates.add(d.date);
+});
+const uniqueDaysWithDisplacement = uniqueDates.size;
+const avgCompletedDisplacementPerDay = uniqueDaysWithDisplacement > 0
+  ? completedDemandsWithDisplacement / uniqueDaysWithDisplacement
+  : 0;
+return {
+  totalDemandsWithDisplacement,
+  completedDemandsWithDisplacement,
+  uniqueDaysWithDisplacement,
+  avgCompletedDisplacementPerDay,
+  technicianName
+};
 
   // Caso 2: "all" — média simples entre as médias individuais de cada técnico
   const technicianNames = Array.from(
