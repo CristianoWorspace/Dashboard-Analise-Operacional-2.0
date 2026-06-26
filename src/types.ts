@@ -23,11 +23,14 @@ export interface GeneralMetrics {
   completedAtivacoes: number;
   completedInfraestrutura: number;
   completedRecolhimentos: number;
+  completedEntregaCarne: number;
   totalSuporte: number;
   totalAtivacoes: number;
   totalInfraestrutura: number;
   totalRecolhimentos: number;
   totalEntregaCarne: number;
+  totalInstalacoes: number;
+  completedInstalacoes: number;
 }
 
 export interface RecolhimentoMetrics {
