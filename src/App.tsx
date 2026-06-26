@@ -1457,18 +1457,20 @@ const chartCategoryData = useMemo(() => {
                 <p className="text-[10px] text-slate-500 mt-2 font-medium">Serviços executados com sucesso em campo.</p>
               </div>
 
-              {/* Card: Capex/Recolhimento */}
-              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-[10px] font-bold text-amber-500 uppercase tracking-widest font-mono">Taxa de Recolhimento</span>
-                  <div className="p-1.5 bg-amber-50 rounded-lg border border-amber-100"><PackageCheck className="w-4 h-4 text-amber-500" /></div>
-                </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-3xl font-black text-amber-600 tracking-tight">{recolhimentoMetrics.retrievalEffectiveness.toFixed(1)}%</span>
-                  <span className="text-2xs font-bold text-slate-400 uppercase">EFETIVO</span>
-                </div>
-                <p className="text-[10px] text-slate-500 mt-2 font-medium">Recuperação de equipamentos em cancelamentos.</p>
-              </div>
+              {/* Card: Instalações */}
+<div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+  <div className="flex justify-between items-start mb-2">
+    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest font-mono">Instalações Concluídas</span>
+    <div className="p-1.5 bg-emerald-50 rounded-lg border border-emerald-100"><Wrench className="w-4 h-4 text-emerald-600" /></div>
+  </div>
+  <div className="flex items-baseline gap-2">
+    <span className="text-3xl font-black text-emerald-600 tracking-tight">{generalMetrics.completedInstalacoes}</span>
+    <span className="text-2xs font-bold text-slate-400 uppercase">OS</span>
+  </div>
+  <p className="text-[10px] text-slate-500 mt-2 font-medium">
+    Fibra + Rádio concluídas • {generalMetrics.totalInstalacoes > 0 ? ((generalMetrics.completedInstalacoes / generalMetrics.totalInstalacoes) * 100).toFixed(1) : "0.0"}% de efetividade
+  </p>
+</div>
             </div>
 {/* Nova Seção: Eficiência de Deslocamento */}
 <div className="grid grid-cols-12 gap-6 mb-6">
