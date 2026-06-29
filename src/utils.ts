@@ -475,14 +475,14 @@ export function calculateAuditDashboardMetrics(
 
   // --- Métrica 2 ---
   const reagendadoComDeslocamento = inPeriod.filter(d =>
-    isStatusRescheduled(d.status) && d.nivel === "com_deslocamento"
-  );
+  isStatusRescheduled(d.status) && isEffectivelyWithDisplacement(d)
+);
   const totalReagendadoComDeslocamento = reagendadoComDeslocamento.length;
 
-  const baseComparacao = inPeriod.filter(d =>
-    d.nivel === "com_deslocamento" &&
-    (isStatusCompleted(d.status) || isStatusRescheduled(d.status) || isStatusNotPerformed(d.status))
-  );
+const baseComparacao = inPeriod.filter(d =>
+  isEffectivelyWithDisplacement(d) &&
+  (isStatusCompleted(d.status) || isStatusRescheduled(d.status) || isStatusNotPerformed(d.status))
+);
   const totalBaseComparacao = baseComparacao.length;
   const pctReagendamentoSobreBase = totalBaseComparacao > 0
     ? (totalReagendadoComDeslocamento / totalBaseComparacao) * 100
