@@ -2575,7 +2575,7 @@ onClick={() => {
       {/* Métrica 1: % de erro nosso */}
       <div className="bg-rose-50 border border-rose-100 p-4 rounded-xl">
         <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block mb-1">
-          % de Erro Nosso
+          Taxa de Erro no Agendamento
         </span>
         <span className="text-3xl font-black text-rose-700 block">
           {auditDashboardMetrics.pctErroAgendamento.toFixed(1)}%
