@@ -523,21 +523,12 @@ export function calculateAuditDashboardMetrics(
 export function calculateDisplacementEfficiencyMetrics(demands: RawDemand[], technicianName?: string): DisplacementEfficiencyMetrics {
   const suporteDemands = demands.filter(d => d.category === "Suporte");
 
-  // CORRIGIDO: toDateKey retorna null quando não parseia — dias inválidos não entram no Set
-  const toDateKey = (dateStr: string): string | null => {
-    if (!dateStr || dateStr.trim() === "") return null;
-    
+  const toDateKey = (dateStr: string): string => {
     const dateObj = parseDate(dateStr);
-    if (dateObj && !isNaN(dateObj.getTime())) {
-      // Usa getFullYear/Month/Date (local) — parseDate já usa new Date(year, month-1, day) para dd/MM/yyyy
+    if (dateObj) {
       return `${dateObj.getFullYear()}-${String(dateObj.getMonth()+1).padStart(2,'0')}-${String(dateObj.getDate()).padStart(2,'0')}`;
     }
-    
-    // Fallback extra: tenta extrair yyyy-MM-dd de ISO string diretamente
-    const isoMatch = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (isoMatch) return isoMatch[1];
-    
-    return null; // data inválida — não conta o dia
+    return dateStr;
   };
 
   // Caso 1: técnico específico
@@ -548,10 +539,7 @@ export function calculateDisplacementEfficiencyMetrics(demands: RawDemand[], tec
 
     const uniqueDates = new Set<string>();
     techDemands.forEach(d => {
-      if (isStatusCompleted(d.status)) {
-        const key = toDateKey(d.date);
-        if (key) uniqueDates.add(key); // CORRIGIDO: só adiciona se key válida
-      }
+      if (isStatusCompleted(d.status)) uniqueDates.add(toDateKey(d.date));
     });
     const uniqueDaysWithDisplacement = uniqueDates.size;
     const avgCompletedDisplacementPerDay = uniqueDaysWithDisplacement > 0
@@ -584,10 +572,7 @@ export function calculateDisplacementEfficiencyMetrics(demands: RawDemand[], tec
 
     const uniqueDates = new Set<string>();
     techDemands.forEach(d => {
-      if (isStatusCompleted(d.status)) {
-        const key = toDateKey(d.date);
-        if (key) uniqueDates.add(key); // CORRIGIDO: só adiciona se key válida
-      }
+      if (isStatusCompleted(d.status)) uniqueDates.add(toDateKey(d.date));
     });
     const techUniqueDays = uniqueDates.size;
 
