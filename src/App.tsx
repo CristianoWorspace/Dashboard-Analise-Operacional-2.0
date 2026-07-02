@@ -363,16 +363,16 @@ const filteredAuditDemands = auditDemands.filter(d => {
   if (!auditFilters.date_start && !auditFilters.date_end) return true;
   const dDate = parseDate(d.date);
   if (!dDate) return false;
-  if (auditFilters.date_start) {
-    const start = new Date(auditFilters.date_start);
-    start.setHours(0, 0, 0, 0);
-    if (dDate < start) return false;
-  }
-  if (auditFilters.date_end) {
-    const end = new Date(auditFilters.date_end);
-    end.setHours(23, 59, 59, 999);
-    if (dDate > end) return false;
-  }
+
+  // Normaliza para yyyy-MM-dd sem fuso (comparação pura de calendário)
+  const toYMD = (date: Date) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+  const itemYMD = toYMD(dDate);
+
+  if (auditFilters.date_start && itemYMD < auditFilters.date_start) return false;
+  if (auditFilters.date_end && itemYMD > auditFilters.date_end) return false;
+
   return true;
 });
 
