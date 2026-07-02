@@ -451,12 +451,6 @@ useEffect(() => {
     fetchAuditRecords();
   }
 }, [activeTab, auditFilters]);
-  useEffect(() => {
-  if (activeTab === "auditoria") {
-    fetchAuditRecords();
-  }
-}, [activeTab, auditFilters]);
-
 // ADICIONE AQUI ↓
 useEffect(() => {
   setAuditPage(1);
