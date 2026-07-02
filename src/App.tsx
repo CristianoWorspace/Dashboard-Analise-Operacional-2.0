@@ -359,22 +359,17 @@ const auditItemsPerPage = 10;
     whoErrored: "",
     errorReason: "",
   });
-const filteredAuditDemands = auditDemands.filter(d => {
-  if (!auditFilters.date_start && !auditFilters.date_end) return true;
-  const dDate = parseDate(d.date);
-  if (!dDate) return false;
-
-  // Normaliza para yyyy-MM-dd sem fuso (comparação pura de calendário)
-  const toYMD = (date: Date) =>
-    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-  const itemYMD = toYMD(dDate);
-
-  if (auditFilters.date_start && itemYMD < auditFilters.date_start) return false;
-  if (auditFilters.date_end && itemYMD > auditFilters.date_end) return false;
-
-  return true;
-});
+const filteredAuditDemands = useMemo(() => {
+  return auditDemands.filter(d => {
+    if (!auditFilters.date_start && !auditFilters.date_end) return true;
+    const parts = d.date.split("/");
+    if (parts.length !== 3) return true;
+    const itemYMD = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    if (auditFilters.date_start && itemYMD < auditFilters.date_start) return false;
+    if (auditFilters.date_end && itemYMD > auditFilters.date_end) return false;
+    return true;
+  });
+}, [auditDemands, auditFilters.date_start, auditFilters.date_end]);
 
 const paginatedAuditDemands = filteredAuditDemands.slice(
   (auditPage - 1) * auditItemsPerPage,
