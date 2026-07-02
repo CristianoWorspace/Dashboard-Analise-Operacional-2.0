@@ -412,18 +412,18 @@ const totalAuditPages = Math.ceil(
           .filter((r: any) => !r.triedToConfirm || r.triedToConfirm === "")
           .map((r: any) => {
             const rawDate = r.date || r.data || "";
-            let dateDisplay = rawDate;
+let dateDisplay = rawDate;
 
-            // Tratamento de fuso horário para datas ISO
-            if (rawDate && (rawDate.includes("-") || rawDate.includes("T"))) {
-              const dateObj = parseDate(rawDate);
-              if (dateObj) {
-                const day = String(rawDate.includes("T") ? dateObj.getUTCDate() : dateObj.getDate()).padStart(2, "0");
-                const month = String(rawDate.includes("T") ? (dateObj.getUTCMonth() + 1) : (dateObj.getMonth() + 1)).padStart(2, "0");
-                const year = rawDate.includes("T") ? dateObj.getUTCFullYear() : dateObj.getFullYear();
-                dateDisplay = `${day}/${month}/${year}`;
-              }
-            }
+if (rawDate) {
+  // Para qualquer formato ISO (com ou sem T), extrai diretamente da string
+  // sem instanciar Date, eliminando completamente o problema de fuso
+  const isoMatch = rawDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    dateDisplay = `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`;
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(rawDate)) {
+    dateDisplay = rawDate; // já está em dd/MM/yyyy
+  }
+}
 
             return {
               date: dateDisplay,
