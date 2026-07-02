@@ -2380,7 +2380,7 @@ const chartCategoryData = useMemo(() => {
 
             {/* Tabela de Demandas para Auditoria */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-              <h3 className="text-md font-bold text-slate-700 mb-4">Protocolos Filtrados ({auditDemands.length})</h3>
+              <h3 className="text-md font-bold text-slate-700 mb-4">Protocolos Filtrados ({filteredAuditDemands.length})</h3>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-200">
                   <thead className="bg-slate-50">
