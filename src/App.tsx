@@ -450,7 +450,7 @@ useEffect(() => {
   if (activeTab === "auditoria") {
     fetchAuditRecords();
   }
-}, [activeTab, auditFilters]);
+}, [activeTab, auditFilters.protocol, auditFilters.triedToConfirm, auditFilters.clientConfirmed, auditFilters.schedulingError, auditFilters.whoErrored, auditFilters.errorReason]);
 // ADICIONE AQUI ↓
 useEffect(() => {
   setAuditPage(1);
