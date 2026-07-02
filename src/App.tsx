@@ -451,6 +451,16 @@ useEffect(() => {
     fetchAuditRecords();
   }
 }, [activeTab, auditFilters]);
+  useEffect(() => {
+  if (activeTab === "auditoria") {
+    fetchAuditRecords();
+  }
+}, [activeTab, auditFilters]);
+
+// ADICIONE AQUI ↓
+useEffect(() => {
+  setAuditPage(1);
+}, [auditFilters.date_start, auditFilters.date_end]);
 const handleAuditFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
   const { name, value } = e.target;
   setAuditForm(prev => ({ ...prev, [name]: value }));
