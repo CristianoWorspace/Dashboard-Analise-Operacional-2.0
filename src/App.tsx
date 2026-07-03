@@ -303,6 +303,7 @@ const handleLogin = async (e: React.FormEvent) => {
   const [technicianList, setTechnicianList] = useState<string[]>([]);
   const [cityList, setCityList] = useState<string[]>([]);
   const [selectedEfficiencyTechnician, setSelectedEfficiencyTechnician] = useState<string>("all");
+  const [selectedReasonForBreakdown, setSelectedReasonForBreakdown] = useState<string | null>(null);
 
   // User management states
   const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
@@ -837,6 +838,20 @@ const auditDashboardMetrics = useMemo(() => {
   const auditIndicators = useMemo(() => {
   return calculateAuditIndicators(auditRecords);
 }, [auditRecords]);
+  const technicianReasonBreakdown = useMemo(() => {
+  if (!selectedReasonForBreakdown) return [];
+  const counts: { [key: string]: number } = {};
+  filteredDemands.forEach(d => {
+    if (!isStatusCompleted(d.status) && (d.reason || "").trim() === selectedReasonForBreakdown) {
+      const tech = d.technician && d.technician.trim() !== "" ? d.technician : "Não Informado";
+      counts[tech] = (counts[tech] || 0) + 1;
+    }
+  });
+  return Object.entries(counts)
+    .map(([technician, count]) => ({ technician, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+}, [filteredDemands, selectedReasonForBreakdown]);
 const displacementEfficiencyMetrics = useMemo(() => {
   return calculateDisplacementEfficiencyMetrics(filteredDemands, selectedEfficiencyTechnician);
 }, [filteredDemands, selectedEfficiencyTechnician]);
