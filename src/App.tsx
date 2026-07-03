@@ -1839,7 +1839,22 @@ const chartCategoryData = useMemo(() => {
               contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
               formatter={(value) => `${value} ocorrências`}
             />
-            <Bar dataKey="count" fill="#F59E0B" radius={[0, 6, 6, 0]} barSize={20} />
+            <Bar 
+              dataKey="count" 
+              radius={[0, 6, 6, 0]} 
+              barSize={20} 
+              cursor="pointer"
+              onClick={(data: any) => setSelectedReasonForBreakdown(
+                data.reason === selectedReasonForBreakdown ? null : data.reason
+              )}
+            >
+              {recolhimentoMetrics.reasonBreakdown.slice(0, 8).map((entry: any, index: number) => (
+                <Cell 
+                  key={`cell-reason-${index}`} 
+                  fill={entry.reason === selectedReasonForBreakdown ? "#DC2626" : "#F59E0B"} 
+                />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
