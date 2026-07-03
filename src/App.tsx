@@ -82,6 +82,19 @@ import {
   AuditRecord
 } from "./types";
 
+function classifyMotivoReason(rawReason: string): string {
+  const r = rawReason.trim();
+  const rl = r.toLowerCase();
+  if (rl.includes("ausente") || rl.includes("não estava") || rl.includes("nao estava") || rl.includes("fechado")) return "Cliente Ausente / Não Encontrado";
+  if (rl.includes("não foi") || rl.includes("nao foi") || rl.includes("não fomos") || rl.includes("atraso")) return "Equipe Técnica Não Compareceu";
+  if (rl.includes("cobranca") || rl.includes("cobrança")) return "Equipamento Cobrado Financeiramente";
+  if (rl.includes("recus") || rl.includes("devolve") || rl.includes("não permitiu")) return "Cliente se recusa a devolver / Cooperar";
+  if (rl.includes("viabilidade") || rl.includes("fibra")) return "Sem viabilidade técnica física";
+  if (rl.includes("desistiu") || rl.includes("solicitou cancelamento") || rl.includes("cancelou")) return "Cliente Desistiu / Cancelou OS";
+  if (rl.includes("contato")) return "Sem contato telefônico no dia";
+  return r;
+}
+
 export default function App() {
   // User authentication states
     const [activeTab, setActiveTab] = useState<"geral" | "recolhimentos" | "eficiencia" | "motivos" | "usuarios" | "auditoria">("geral");
