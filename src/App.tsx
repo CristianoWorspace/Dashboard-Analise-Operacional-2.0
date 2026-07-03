@@ -2175,6 +2175,117 @@ const chartCategoryData = useMemo(() => {
 
             </div>
 
+            {selectedGargaloReason && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-3">
+                  <div>
+                    <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                      📍 Protocolos por Cidade: <span className="text-indigo-600 normal-case font-sans">"{selectedGargaloReason}"</span>
+                    </h4>
+                    <p className="text-[10px] text-slate-500 mt-1">Clique numa cidade para ver os protocolos específicos.</p>
+                  </div>
+                  <button
+                    onClick={() => { setSelectedGargaloReason(null); setSelectedGargaloCity(null); }}
+                    className="text-2xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline transition cursor-pointer shrink-0 ml-4"
+                  >
+                    Fechar / Ver Todos
+                  </button>
+                </div>
+
+                {motivosCityBreakdown.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 font-mono text-xs">
+                    Nenhuma cidade encontrada para este motivo no escopo atual.
+                  </div>
+                ) : (
+                  <div className="h-[280px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={motivosCityBreakdown}
+                        layout="vertical"
+                        margin={{ top: 10, right: 40, left: 140, bottom: 5 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                        <XAxis type="number" stroke="#94a3b8" fontSize={9} allowDecimals={false} />
+                        <YAxis 
+                          dataKey="city" 
+                          type="category" 
+                          stroke="#475569" 
+                          fontSize={9} 
+                          tickLine={false} 
+                          width={140}
+                        />
+                        <Tooltip 
+                          cursor={{ fill: '#f8fafc' }}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                          formatter={(value) => `${value} ocorrências`}
+                        />
+                        <Bar 
+                          dataKey="count" 
+                          radius={[0, 6, 6, 0]} 
+                          barSize={18}
+                          cursor="pointer"
+                          onClick={(data: any) => setSelectedGargaloCity(
+                            data.city === selectedGargaloCity ? null : data.city
+                          )}
+                        >
+                          {motivosCityBreakdown.map((entry, index) => (
+                            <Cell 
+                              key={`cell-city-${index}`} 
+                              fill={entry.city === selectedGargaloCity ? "#DC2626" : "#0EA5E9"} 
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedGargaloReason && selectedGargaloCity && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-3">
+                  <div>
+                    <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                      📋 Protocolos: <span className="text-sky-600 normal-case font-sans">{selectedGargaloCity}</span>
+                    </h4>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      {motivosProtocolBreakdown.length} protocolo(s) — Motivo: "{selectedGargaloReason}"
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedGargaloCity(null)}
+                    className="text-2xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline transition cursor-pointer shrink-0 ml-4"
+                  >
+                    Fechar
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                        <th className="pb-2 pr-4">Protocolo</th>
+                        <th className="pb-2 pr-4">Tipo de OS</th>
+                        <th className="pb-2 pr-4">Técnico</th>
+                        <th className="pb-2">Data</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {motivosProtocolBreakdown.map((p, i) => (
+                        <tr key={i} className="hover:bg-slate-50 transition">
+                          <td className="py-3 pr-4 font-mono text-xs font-bold text-indigo-650">#{p.protocol}</td>
+                          <td className="py-3 pr-4 text-xs text-slate-700 max-w-[260px] truncate" title={p.demand}>{p.demand}</td>
+                          <td className="py-3 pr-4 text-xs text-slate-600">{p.technician}</td>
+                          <td className="py-3 text-xs font-mono text-slate-500">{p.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
 
