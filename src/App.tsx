@@ -1934,7 +1934,13 @@ const chartCategoryData = useMemo(() => {
               contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
               formatter={(value) => `${value} ocorrências`}
             />
-            <Bar dataKey="count" fill="#DC2626" radius={[0, 6, 6, 0]} barSize={18} />
+            <Bar dataKey="count" fill="#DC2626" radius={[0, 6, 6, 0]} barSize={18}>
+              <LabelList 
+                dataKey="count" 
+                position="right" 
+                style={{ fill: "#DC2626", fontSize: 11, fontWeight: 700, fontFamily: "monospace" }} 
+              />
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
       </div>
