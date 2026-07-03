@@ -1853,7 +1853,7 @@ const chartCategoryData = useMemo(() => {
     </div>
 
     <div className="text-[10px] text-slate-400 font-mono text-center pt-2 border-t border-slate-100 mt-4">
-      Meta de Efetividade em Recuperação de materiais: &lt; 60%
+      Meta de Efetividade em Recuperação de materiais: &gt; 60%
     </div>
   </div>
 
