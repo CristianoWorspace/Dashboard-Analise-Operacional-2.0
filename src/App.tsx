@@ -778,7 +778,7 @@ useEffect(() => {
         }
       }
 
-      // 5. Date Period Filter (Robust parsing of various date styles)
+            // 5. Date Period Filter (Robust parsing of various date styles)
       if (filters.startDate || filters.endDate) {
         const itemDate = parseDate(item.date);
         if (itemDate) {
@@ -793,6 +793,11 @@ useEffect(() => {
             if (itemDate > end) return false;
           }
         }
+      }
+
+      // 6. City Filter
+      if (filters.city && filters.city !== "all" && item.city !== filters.city) {
+        return false;
       }
 
       return true;
