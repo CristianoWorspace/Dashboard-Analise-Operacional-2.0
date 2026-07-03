@@ -868,6 +868,51 @@ const auditDashboardMetrics = useMemo(() => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 }, [filteredDemands, selectedReasonForBreakdown]);
+
+const motivosReasonBreakdown = useMemo(() => {
+  const reasonMap: { [key: string]: number } = {};
+  filteredDemands.forEach(d => {
+    if (!isStatusCompleted(d.status) && d.reason && d.reason.trim() !== "") {
+      const r = classifyMotivoReason(d.reason);
+      reasonMap[r] = (reasonMap[r] || 0) + 1;
+    }
+  });
+  return Object.entries(reasonMap)
+    .map(([reason, count]) => ({ reason, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+}, [filteredDemands]);
+
+const motivosCityBreakdown = useMemo(() => {
+  if (!selectedGargaloReason) return [];
+  const counts: { [key: string]: number } = {};
+  filteredDemands.forEach(d => {
+    if (!isStatusCompleted(d.status) && d.reason && d.reason.trim() !== "" && classifyMotivoReason(d.reason) === selectedGargaloReason) {
+      const city = d.city && d.city.trim() !== "" ? d.city : "Não Informada";
+      counts[city] = (counts[city] || 0) + 1;
+    }
+  });
+  return Object.entries(counts)
+    .map(([city, count]) => ({ city, count }))
+    .sort((a, b) => b.count - a.count);
+}, [filteredDemands, selectedGargaloReason]);
+
+const motivosProtocolBreakdown = useMemo(() => {
+  if (!selectedGargaloReason || !selectedGargaloCity) return [];
+  return filteredDemands
+    .filter(d => {
+      const cityNorm = d.city && d.city.trim() !== "" ? d.city : "Não Informada";
+      return !isStatusCompleted(d.status) && d.reason && d.reason.trim() !== "" &&
+        classifyMotivoReason(d.reason) === selectedGargaloReason && cityNorm === selectedGargaloCity;
+    })
+    .map(d => ({
+      protocol: d.protocol_number || "S/P",
+      demand: d.demand || "N/A",
+      technician: d.technician || "N/A",
+      date: d.date || ""
+    }));
+}, [filteredDemands, selectedGargaloReason, selectedGargaloCity]);
+
 const displacementEfficiencyMetrics = useMemo(() => {
   return calculateDisplacementEfficiencyMetrics(filteredDemands, selectedEfficiencyTechnician);
 }, [filteredDemands, selectedEfficiencyTechnician]);
