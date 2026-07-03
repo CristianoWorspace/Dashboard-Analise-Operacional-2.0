@@ -2032,84 +2032,83 @@ const chartCategoryData = useMemo(() => {
                   💡 Principais Justificativas Citadas (Não Realizados & Reagendados)
                 </h4>
                 
-                {(() => {
-                  const reasonMap: { [key: string]: number } = {};
-                  filteredDemands.forEach(d => {
-                    const isCompleted = isStatusCompleted(d.status);
-                    if (!isCompleted && d.reason && d.reason.trim() !== "") {
-                      let r = d.reason.trim();
-                      if (r.toLowerCase().includes("ausente") || r.toLowerCase().includes("não estava") || r.toLowerCase().includes("nao estava") || r.toLowerCase().includes("fechado")) r = "Cliente Ausente / Não Encontrado";
-                      else if (r.toLowerCase().includes("não foi") || r.toLowerCase().includes("nao foi") || r.toLowerCase().includes("não fomos") || r.toLowerCase().includes("atraso")) r = "Equipe Técnica Não Compareceu";
-                      else if (r.toLowerCase().includes("cobranca") || r.toLowerCase().includes("cobrança")) r = "Equipamento Cobrado Financeiramente";
-                      else if (r.toLowerCase().includes("recus") || r.toLowerCase().includes("devolve") || r.toLowerCase().includes("não permitiu")) r = "Cliente se recusa a devolver / Cooperar";
-                      else if (r.toLowerCase().includes("viabilidade") || r.toLowerCase().includes("fibra")) r = "Sem viabilidade técnica física";
-                      else if (r.toLowerCase().includes("desistiu") || r.toLowerCase().includes("solicitou cancelamento") || r.toLowerCase().includes("cancelou")) r = "Cliente Desistiu / Cancelou OS";
-                      else if (r.toLowerCase().includes("contato")) r = "Sem contato telefônico no dia";
-                      
-                      reasonMap[r] = (reasonMap[r] || 0) + 1;
-                    }
-                  });
-
-                  const sortedReasons = Object.entries(reasonMap)
-                    .map(([reason, count]) => ({ reason, count }))
-                    .sort((a, b) => b.count - a.count)
-                    .slice(0, 6);
-
-                  const totalFailures = sortedReasons.reduce((acc, cr) => acc + cr.count, 0);
-
-                  if (sortedReasons.length === 0) {
-                    return (
-                      <div className="py-12 text-center text-slate-400 font-mono text-xs">
-                        Nenhuma falha ou justificativa registrada no escopo selecionado.
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-4">
-                      <div className="h-[220px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
-                            data={sortedReasons}
-                            layout="vertical"
-                            margin={{ top: 10, right: 30, left: 140, bottom: 5 }}
+                {motivosReasonBreakdown.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 font-mono text-xs">
+                    Nenhuma falha ou justificativa registrada no escopo selecionado.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="h-[220px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={motivosReasonBreakdown}
+                          layout="vertical"
+                          margin={{ top: 10, right: 40, left: 140, bottom: 5 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                          <XAxis type="number" stroke="#94a3b8" fontSize={9} allowDecimals={false} />
+                          <YAxis 
+                            dataKey="reason" 
+                            type="category" 
+                            stroke="#475569" 
+                            fontSize={9} 
+                            tickLine={false} 
+                            width={140}
+                          />
+                          <Tooltip formatter={(value) => `${value} ocorrências`} />
+                          <Bar 
+                            dataKey="count" 
+                            radius={[0, 4, 4, 0]} 
+                            barSize={14}
+                            cursor="pointer"
+                            onClick={(data: any) => {
+                              const next = data.reason === selectedGargaloReason ? null : data.reason;
+                              setSelectedGargaloReason(next);
+                              setSelectedGargaloCity(null);
+                            }}
                           >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                            <XAxis type="number" stroke="#94a3b8" fontSize={9} />
-                            <YAxis 
-                              dataKey="reason" 
-                              type="category" 
-                              stroke="#475569" 
-                              fontSize={9} 
-                              tickLine={false} 
-                              width={140}
-                            />
-                            <Tooltip formatter={(value) => `${value} ocorrências`} />
-                            <Bar dataKey="count" fill="#6366F1" radius={[0, 4, 4, 0]} barSize={14} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-
-                      {/* Diagnostic Summary list */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                        {sortedReasons.map((obj, i) => {
-                          const pct = totalFailures > 0 ? (obj.count / totalFailures) * 100 : 0;
-                          return (
-                            <div key={i} className="p-3 bg-slate-50/75 rounded-xl border border-slate-100 flex items-center justify-between">
-                              <span className="text-2xs text-slate-700 font-semibold truncate max-w-[200px]" title={obj.reason}>
-                                {i + 1}. {obj.reason}
-                              </span>
-                              <div className="text-right shrink-0">
-                                <span className="text-xs font-bold text-slate-900 block">{obj.count} OS</span>
-                                <span className="text-[9px] text-slate-500 font-mono block">{pct.toFixed(1)}% das falhas</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
+                            {motivosReasonBreakdown.map((entry, index) => (
+                              <Cell 
+                                key={`cell-motivo-${index}`} 
+                                fill={entry.reason === selectedGargaloReason ? "#DC2626" : "#6366F1"} 
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     </div>
-                  );
-                })()}
+
+                    {/* Diagnostic Summary list */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                      {motivosReasonBreakdown.map((obj, i) => {
+                        const totalFailures = motivosReasonBreakdown.reduce((acc, cr) => acc + cr.count, 0);
+                        const pct = totalFailures > 0 ? (obj.count / totalFailures) * 100 : 0;
+                        const isSelected = obj.reason === selectedGargaloReason;
+                        return (
+                          <div 
+                            key={i} 
+                            onClick={() => {
+                              const next = isSelected ? null : obj.reason;
+                              setSelectedGargaloReason(next);
+                              setSelectedGargaloCity(null);
+                            }}
+                            className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition ${
+                              isSelected ? "bg-rose-50 border-rose-200 ring-1 ring-rose-300" : "bg-slate-50/75 border-slate-100 hover:bg-slate-100"
+                            }`}
+                          >
+                            <span className="text-2xs text-slate-700 font-semibold truncate max-w-[200px]" title={obj.reason}>
+                              {i + 1}. {obj.reason}
+                            </span>
+                            <div className="text-right shrink-0">
+                              <span className="text-xs font-bold text-slate-900 block">{obj.count} OS</span>
+                              <span className="text-[9px] text-slate-500 font-mono block">{pct.toFixed(1)}% das falhas</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
               </div>
 
