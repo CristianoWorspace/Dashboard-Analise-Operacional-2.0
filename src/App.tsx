@@ -52,7 +52,8 @@ import {
   Pie,
   Cell,
   LineChart,
-  Line
+  Line,
+  LabelList
 } from "recharts";
 import { 
   parseSheetRow,
