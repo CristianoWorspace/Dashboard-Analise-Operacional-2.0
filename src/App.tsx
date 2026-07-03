@@ -690,7 +690,10 @@ useEffect(() => {
       endDate: "",
       technician: "all",
       status: "all",
-      category: "all"
+      category: "all",
+      displacementLevel: "com_deslocamento",
+      reason: "all",
+      city: "all"
     });
     setSearchQuery("");
   };
