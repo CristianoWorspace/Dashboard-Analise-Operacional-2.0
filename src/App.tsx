@@ -2759,7 +2759,7 @@ onClick={() => {
           </div>
         )}
 
-        {activeTab !== "usuarios" && activeTab !== "auditoria" && (
+        {activeTab !== "usuarios" && activeTab !== "auditoria" && !(activeTab === "recolhimentos" && selectedReasonForBreakdown) && (
           <div className="mt-8 bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
           
           {/* Table Header Controls */}
