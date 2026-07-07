@@ -1978,7 +1978,7 @@ const chartCategoryData = useMemo(() => {
         <p className="text-[10px] text-slate-500 mt-1">Ranking de quem mais registrou este motivo específico no período filtrado.</p>
       </div>
       <button
-        onClick={() => setSelectedReasonForBreakdown(null)}
+        onClick={() => { setSelectedReasonForBreakdown(null); setSelectedTechnicianForBreakdown(null); }}
         className="text-2xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline transition cursor-pointer shrink-0 ml-4"
       >
         Fechar / Ver Todos
