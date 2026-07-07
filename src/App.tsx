@@ -318,6 +318,7 @@ const handleLogin = async (e: React.FormEvent) => {
   const [cityList, setCityList] = useState<string[]>([]);
   const [selectedEfficiencyTechnician, setSelectedEfficiencyTechnician] = useState<string>("all");
   const [selectedReasonForBreakdown, setSelectedReasonForBreakdown] = useState<string | null>(null);
+  const [selectedTechnicianForBreakdown, setSelectedTechnicianForBreakdown] = useState<string | null>(null);
   const [selectedGargaloReason, setSelectedGargaloReason] = useState<string | null>(null);
   const [selectedGargaloCity, setSelectedGargaloCity] = useState<string | null>(null);
 
