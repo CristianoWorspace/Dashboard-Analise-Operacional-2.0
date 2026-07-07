@@ -870,6 +870,21 @@ const auditDashboardMetrics = useMemo(() => {
     .slice(0, 10);
 }, [filteredDemands, selectedReasonForBreakdown]);
 
+const technicianProtocolBreakdown = useMemo(() => {
+  if (!selectedReasonForBreakdown || !selectedTechnicianForBreakdown) return [];
+  return filteredDemands
+    .filter(d => {
+      const tech = d.technician && d.technician.trim() !== "" ? d.technician : "Não Informado";
+      return !isStatusCompleted(d.status) && (d.reason || "").trim() === selectedReasonForBreakdown && tech === selectedTechnicianForBreakdown;
+    })
+    .map(d => ({
+      protocol: d.protocol_number || "S/P",
+      demand: d.demand || "N/A",
+      city: d.city || "N/A",
+      date: d.date || ""
+    }));
+}, [filteredDemands, selectedReasonForBreakdown, selectedTechnicianForBreakdown]);
+
 const motivosReasonBreakdown = useMemo(() => {
   const reasonMap: { [key: string]: number } = {};
   filteredDemands.forEach(d => {
