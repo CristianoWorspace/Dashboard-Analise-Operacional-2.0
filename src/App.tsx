@@ -1921,9 +1921,11 @@ const chartCategoryData = useMemo(() => {
               radius={[0, 6, 6, 0]} 
               barSize={20} 
               cursor="pointer"
-              onClick={(data: any) => setSelectedReasonForBreakdown(
-                data.reason === selectedReasonForBreakdown ? null : data.reason
-              )}
+              onClick={(data: any) => {
+                const next = data.reason === selectedReasonForBreakdown ? null : data.reason;
+                setSelectedReasonForBreakdown(next);
+                setSelectedTechnicianForBreakdown(null);
+              }}
             >
               {recolhimentoMetrics.reasonBreakdown.slice(0, 8).map((entry: any, index: number) => (
                 <Cell 
