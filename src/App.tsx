@@ -2012,7 +2012,21 @@ const chartCategoryData = useMemo(() => {
               contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
               formatter={(value) => `${value} ocorrências`}
             />
-            <Bar dataKey="count" fill="#DC2626" radius={[0, 6, 6, 0]} barSize={18}>
+            <Bar 
+              dataKey="count" 
+              radius={[0, 6, 6, 0]} 
+              barSize={18}
+              cursor="pointer"
+              onClick={(data: any) => setSelectedTechnicianForBreakdown(
+                data.technician === selectedTechnicianForBreakdown ? null : data.technician
+              )}
+            >
+              {technicianReasonBreakdown.map((entry, index) => (
+                <Cell 
+                  key={`cell-tech-${index}`} 
+                  fill={entry.technician === selectedTechnicianForBreakdown ? "#7C2D12" : "#DC2626"} 
+                />
+              ))}
               <LabelList 
                 dataKey="count" 
                 position="right" 
