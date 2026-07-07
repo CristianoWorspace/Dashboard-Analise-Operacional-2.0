@@ -2040,6 +2040,50 @@ const chartCategoryData = useMemo(() => {
   </div>
 )}
 
+{selectedReasonForBreakdown && selectedTechnicianForBreakdown && (
+  <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+    <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-3">
+      <div>
+        <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+          📋 Protocolos: <span className="text-rose-800 normal-case font-sans">{selectedTechnicianForBreakdown}</span>
+        </h4>
+        <p className="text-[10px] text-slate-500 mt-1">
+          {technicianProtocolBreakdown.length} protocolo(s) — Motivo: "{selectedReasonForBreakdown}"
+        </p>
+      </div>
+      <button
+        onClick={() => setSelectedTechnicianForBreakdown(null)}
+        className="text-2xs font-semibold text-indigo-600 hover:text-indigo-800 hover:underline transition cursor-pointer shrink-0 ml-4"
+      >
+        Fechar
+      </button>
+    </div>
+
+    <div className="overflow-x-auto">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">
+            <th className="pb-2 pr-4">Protocolo</th>
+            <th className="pb-2 pr-4">Tipo de OS</th>
+            <th className="pb-2 pr-4">Cidade</th>
+            <th className="pb-2">Data</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-50">
+          {technicianProtocolBreakdown.map((p, i) => (
+            <tr key={i} className="hover:bg-slate-50 transition">
+              <td className="py-3 pr-4 font-mono text-xs font-bold text-indigo-650">#{p.protocol}</td>
+              <td className="py-3 pr-4 text-xs text-slate-700 max-w-[260px] truncate" title={p.demand}>{p.demand}</td>
+              <td className="py-3 pr-4 text-xs text-slate-600">{p.city}</td>
+              <td className="py-3 text-xs font-mono text-slate-500">{p.date}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
+
           </div>
         )}
 
