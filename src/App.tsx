@@ -894,8 +894,6 @@ const cityRecolhimentoBreakdown = useMemo(() => {
     .map(([city, count]) => ({ city, count }))
     .sort((a, b) => b.count - a.count);
 }, [filteredDemands]);
-
-const motivosReasonBreakdown = useMemo(() => {
 const motivosReasonBreakdown = useMemo(() => {
   const reasonMap: { [key: string]: number } = {};
   filteredDemands.forEach(d => {
