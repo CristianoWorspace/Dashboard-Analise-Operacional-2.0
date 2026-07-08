@@ -1892,6 +1892,51 @@ const chartCategoryData = useMemo(() => {
               </div>
             </div>
 
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <h4 className="text-xs font-bold font-mono text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-1.5 border-b border-slate-100 pb-3">
+                🏙️ Total de Recolhimentos por Cidade
+              </h4>
+
+              {cityRecolhimentoBreakdown.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 font-mono text-xs">
+                  Nenhum registro encontrado no escopo selecionado.
+                </div>
+              ) : (
+                <div className="h-[320px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={cityRecolhimentoBreakdown}
+                      layout="vertical"
+                      margin={{ top: 10, right: 40, left: 140, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                      <XAxis type="number" stroke="#94a3b8" fontSize={9} allowDecimals={false} />
+                      <YAxis 
+                        dataKey="city" 
+                        type="category" 
+                        stroke="#475569" 
+                        fontSize={9} 
+                        tickLine={false} 
+                        width={140}
+                      />
+                      <Tooltip 
+                        cursor={{ fill: '#f8fafc' }}
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        formatter={(value) => `${value} ocorrências`}
+                      />
+                      <Bar dataKey="count" fill="#0EA5E9" radius={[0, 6, 6, 0]} barSize={16}>
+                        <LabelList 
+                          dataKey="count" 
+                          position="right" 
+                          style={{ fill: "#0EA5E9", fontSize: 11, fontWeight: 700, fontFamily: "monospace" }} 
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
    <div className="grid grid-cols-12 gap-6">
   
   {/* Gráfico de motivos: Reagendados + Não Realizados (COL-8) */}
