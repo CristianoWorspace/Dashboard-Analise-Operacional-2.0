@@ -894,6 +894,23 @@ const cityRecolhimentoBreakdown = useMemo(() => {
     .map(([city, count]) => ({ city, count }))
     .sort((a, b) => b.count - a.count);
 }, [filteredDemands]);
+
+const recolhimentoCityProtocolBreakdown = useMemo(() => {
+  if (!selectedRecolhimentoCity) return [];
+  return filteredDemands
+    .filter(d => {
+      const city = d.city && d.city.trim() !== "" ? d.city : "Não Informada";
+      return city === selectedRecolhimentoCity;
+    })
+    .map(d => ({
+      protocol: d.protocol_number || "S/P",
+      demand: d.demand || "N/A",
+      technician: d.technician || "N/A",
+      status: d.status || "N/A",
+      date: d.date || ""
+    }));
+}, [filteredDemands, selectedRecolhimentoCity]);
+
 const motivosReasonBreakdown = useMemo(() => {
   const reasonMap: { [key: string]: number } = {};
   filteredDemands.forEach(d => {
