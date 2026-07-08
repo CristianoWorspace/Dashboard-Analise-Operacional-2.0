@@ -1939,13 +1939,27 @@ const chartCategoryData = useMemo(() => {
                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                         formatter={(value) => `${value} ocorrências`}
                       />
-                      <Bar dataKey="count" fill="#0EA5E9" radius={[0, 6, 6, 0]} barSize={16}>
-                        <LabelList 
-                          dataKey="count" 
-                          position="right" 
-                          style={{ fill: "#0EA5E9", fontSize: 11, fontWeight: 700, fontFamily: "monospace" }} 
-                        />
-                      </Bar>
+<Bar 
+  dataKey="count" 
+  radius={[0, 6, 6, 0]} 
+  barSize={16}
+  cursor="pointer"
+  onClick={(data: any) => setSelectedRecolhimentoCity(
+    data.city === selectedRecolhimentoCity ? null : data.city
+  )}
+>
+  {cityRecolhimentoBreakdown.map((entry, index) => (
+    <Cell 
+      key={`cell-recolh-city-${index}`} 
+      fill={entry.city === selectedRecolhimentoCity ? "#DC2626" : "#0EA5E9"} 
+    />
+  ))}
+  <LabelList 
+    dataKey="count" 
+    position="right" 
+    style={{ fill: "#0EA5E9", fontSize: 11, fontWeight: 700, fontFamily: "monospace" }} 
+  />
+</Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
