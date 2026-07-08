@@ -321,7 +321,7 @@ const handleLogin = async (e: React.FormEvent) => {
   const [selectedTechnicianForBreakdown, setSelectedTechnicianForBreakdown] = useState<string | null>(null);
   const [selectedGargaloReason, setSelectedGargaloReason] = useState<string | null>(null);
   const [selectedGargaloCity, setSelectedGargaloCity] = useState<string | null>(null);
-
+  const [selectedRecolhimentoCity, setSelectedRecolhimentoCity] = useState<string | null>(null); // ← novo
   // User management states
   const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
   const [userForm, setUserForm] = useState({
