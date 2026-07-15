@@ -3026,6 +3026,7 @@ onClick={() => {
                       <option value="Não deu tempo - Reagendado pela equipe técnica">Não deu tempo - Reagendado pela equipe técnica</option>
                       <option value="Motivo - Chuva - Equipe deslocada">Motivo - Chuva - Equipe deslocada</option>
                       <option value="Motivo - Chuva - Equipe não deslocada">Motivo - Chuva - Equipe não deslocada</option>
+                      <option value="Confirmou - mesmo assim, cliente ausente">Confirmou - mesmo assim, cliente ausente</option>
                     </select>
                   </div>
                   <div className="md:col-span-2 flex justify-end">
